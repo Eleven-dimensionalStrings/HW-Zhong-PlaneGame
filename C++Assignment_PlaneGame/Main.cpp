@@ -1,4 +1,5 @@
 #include "cPlaneGame.h"
+#include <iostream>
 using namespace std;
 int main()
 {
@@ -9,28 +10,44 @@ int main()
 	uniform_int_distribution<int>RanPos(0, 24);
 	uniform_int_distribution<int>RanAtk(10, 20);
 	uniform_int_distribution<int>RanHp(100, 150);
-	initgraph(600, 800, 0);
-	HWND draw = GetHWnd();
-	setbkcolor(WHITE);
-	cleardevice();
-	IMAGE MAP(600, 800);
-	for (int i = 0; i < 5; ++i)
+	uniform_int_distribution<int>RanDir(-2, 2);
+	for (int j = 0; j < 10; ++j)
 	{
-		enemy * e = new enemy(RanHp(en), RanAtk(en), 0, 5, ENEMY * RanPos(en), 0, 60, -1, 1, 0, 0);
+		enemy * e = new enemy(RanHp(en), RanAtk(en), 0, 5, ENEMY * RanPos(en), 0, 60, -1, 1, RanDir(en) / 2, RanDir(en) / 2 + 2, 0);
+		vector<array<int, 3>>a;
+		array<int, 3>b{ 0,2,20 };
+		a.push_back(b);
+		for (int i = 0; i < 100; ++i)
+		{
+			b[0] = RanDir(en);
+			b[1] = RanDir(en);
+			b[2] = RanHp(en);
+			a.push_back(b);
+		}
+		e->SetMoveList(a);
 		OperateSystem.CreateEnemy(*e);
 	}
+	initgraph(600, 800, 0);
+	HWND draw = GetHWnd();
+	MoveWindow(draw, 400, 0, 615, 839, NULL);
+	setbkcolor(0xF9FFFF);
+	cleardevice();
+	IMAGE MAP(600, 800);
+	settextcolor(0x000000);
 	system("pause");
 	setfillcolor(LIGHTCYAN);
+	SetWorkingImage(&MAP);
+	setbkcolor(0xF9FFFF);
 	while (!GetAsyncKeyState(VK_ESCAPE))
 	{
 		SetWorkingImage(&MAP);
-		setbkcolor(WHITE);
+		//setbkcolor(0xF9FFFF);
 		cleardevice();
 		PlayerPlane.MovePlayer(PlayerPlane.PlayerOperate());
 		OperateSystem.MoveEnemy();
 		OperateSystem.EnemyFire();
 		OperateSystem.MoveEnemyBullet();
-		OperateSystem.CheckCrash(PlayerPlane.GetPos());
+		PlayerPlane.beCrash(OperateSystem.CheckCrash(PlayerPlane.GetPos()));
 		OperateSystem.CheckDisapear();
 		if (PlayerPlane.ifFire())
 			OperateSystem.CreatePlayerBullet(PlayerPlane.Fire());
@@ -40,7 +57,7 @@ int main()
 		OperateSystem.DisappearEnemyBullet();
 		OperateSystem.EnemyAttackPlayer(PlayerPlane);
 		OperateSystem.CheckKill();
-		OperateSystem.DrawToScreen(PlayerPlane.GetPos());
+		OperateSystem.DrawToScreen(PlayerPlane.GetPos(), PlayerPlane.GetData());
 		SetWorkingImage(0);
 		putimage(0, 0, &MAP);
 		Sleep(15);
