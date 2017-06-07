@@ -1,6 +1,11 @@
 #include "cPlaneGame.h"
 using namespace std;
-
+std::default_random_engine en(int(time(0)));
+std::uniform_real_distribution<double>Ranf(0, 0.2);
+std::uniform_int_distribution<int>RanPos(0, 24);
+std::uniform_int_distribution<int>RanDirx(-2, 2);
+std::uniform_int_distribution<int>RanDiry(0, 2);
+uniform_int_distribution<int>RanTime(60, 180);
 player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
 	int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd) :
 	hp(thp), energy(tenergy), rate(tr), count(tc), atk(tatk), def(tdef), coin(tcoin),
@@ -8,12 +13,17 @@ player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
 {
 }
 
-bool player::ifBeAttacked(pair<int, int>pos, int radio)const
+player::player(string data)
 {
-	if (pos.first >= x - radio && pos.first <= x + 50 + radio && pos.second >= y - radio && pos.second <= y + 50 + radio)
-		return 1;
+	if (data.size() == sizeof(player))
+	{
+		for (int i = 0; i < sizeof(player); ++i)
+		{
+			reinterpret_cast<char*>(this)[i] = data[i];
+		}
+	}
 	else
-		return 0;
+		throw string("This string's length is incorrect to initialize a class 'player'\n");
 }
 
 void player::beAttacked(int a)
@@ -71,14 +81,16 @@ bool player::ifFire(void)
 std::vector<string> player::GetData(void) const
 {
 	vector<string>data;
-	int digit = 1000000000, ihp = 0, ienergy = 0, uhp = hp, uenergy = energy;
-	string shp = "", senergy = "";
+	int digit = 1000000000, ihp = 0, ienergy = 0, uhp = hp, uenergy = energy, ucoin = coin, icoin = 0;
+	string shp = "", senergy = "", scoin = "";
 	for (int i = 0; i < 10; ++i)
 	{
 		if (uhp / digit)
 			++ihp;
 		if (uenergy / digit)
 			++ienergy;
+		if (ucoin / digit)
+			++icoin;
 		if (ihp)
 		{
 			shp += char((uhp / digit) + 48);
@@ -89,13 +101,29 @@ std::vector<string> player::GetData(void) const
 			senergy += char((uenergy / digit) + 48);
 			uenergy -= (uenergy / digit)*digit;
 		}
+		if (icoin)
+		{
+			scoin += char((ucoin / digit) + 48);
+			ucoin -= (ucoin / digit)*digit;
+		}
 		digit /= 10;
 	}
 	shp += '\0';
 	senergy += '\0';
 	data.push_back(shp);
 	data.push_back(senergy);
+	data.push_back(scoin);
 	return data;
+}
+
+void player::GainCoin(int c)
+{
+	coin += c;
+}
+
+std::string player::ReturnInformation(void) const
+{
+	return reinterpret_cast<const char*>(this);
 }
 
 player_bullet & player::Fire(void)
@@ -128,6 +156,15 @@ void enemy::SetLength(int tL)
 int enemy::GetLength(void) const
 {
 	return enemy_length;
+}
+
+void enemy::Draw(void) const
+{
+	int l_hp = (hp  * enemy_length) / total_hp;
+	setfillcolor(0x00FF00);
+	solidrectangle(x, y, x + ENEMY, y + ENEMY);
+	setfillcolor(0x0000FF);
+	solidrectangle(x, y - 7, x + l_hp, y - 2);
 }
 
 enemy::enemy(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
@@ -168,14 +205,17 @@ bool enemy::countFire(void)
 {
 	++fire_cd;
 	if (fire_cd >= fire_rate)
+	{
+		fire_cd = 0;
 		return 1;
+	}
 	return 0;
 }
 
 enemy_bullet & enemy::Fire(void)
 {
-	fire_cd = 0;
-	enemy_bullet * teb = new enemy_bullet(atk, x + bullet_radio / 2, y + 25, fire_speed_x, fire_speed_y);
+	enemy_bullet * teb = new enemy_bullet(atk, x + enemy_length / 2, y + 25 + bullet_radio, fire_speed_x, fire_speed_y);
+	teb->SetRadio(10);
 	return *teb;
 }
 
@@ -253,7 +293,7 @@ void enemy::SetMoveList(std::vector<std::array<int, 3>> tmove_list)
 	move_speed_y = (*move_step)[1];
 }
 
-void enemy::SetFireList(std::vector<std::array<int, 2>> tfire_list)
+void enemy::SetFireList(std::vector<std::array<int, 3>> tfire_list)
 {
 	fire_list = tfire_list;
 	fire_step = fire_list.begin();
@@ -383,6 +423,11 @@ void player_bullet::SetRadio(int tR)
 	radio = tR;
 }
 
+void player_bullet::draw(void) const
+{
+	solidcircle(x, y, radio);
+}
+
 enemy_bullet::enemy_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy) :
 	atk(ta), x(tx), y(ty), speed_x(tspeedx), speed_y(tspeedy), frame(1), now_frame(1), radio(BULLET)
 {
@@ -390,6 +435,8 @@ enemy_bullet::enemy_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy) :
 
 bool enemy_bullet::CheckDisapear(void)
 {
+	if (x < 0 || x>600 || y < 0 || y>600)
+		return 1;
 	return 0;
 }
 
@@ -429,16 +476,24 @@ void enemy_bullet::SetRadio(int tR)
 	radio = tR;
 }
 
+bool enemy_bullet::ifAttack(pair<int, int> pos) const
+{
+	if (x > pos.first - radio && x<pos.first + PLAYER + radio && y>pos.second - radio && y < pos.second + PLAYER + radio)
+		return 1;
+	return false;
+}
+
+void enemy_bullet::draw(void) const
+{
+	solidcircle(x, y, radio);
+}
+
 void operate_system::DrawToScreen(pair<int, int>plp, vector<string>player_data)
 {
 
 	for (list<enemy*>::iterator i = EnemyList.begin(); i != EnemyList.end(); ++i)
 	{
-		int x = (**i).GetPos().first, y = (**i).GetPos().second, hp = (**i).GetHpPercent() / 4;
-		setfillcolor(0x00FF00);
-		solidrectangle(x, y, x + ENEMY, y + ENEMY);
-		setfillcolor(0x0000FF);
-		solidrectangle(x, y - 7, x + hp, y - 2);
+		(**i).Draw();
 	}
 	setfillcolor(LIGHTBLUE);
 	fillrectangle(plp.first, plp.second, plp.first + PLAYER, plp.second + PLAYER);
@@ -446,21 +501,21 @@ void operate_system::DrawToScreen(pair<int, int>plp, vector<string>player_data)
 	pair<int, int>pos;
 	for (list<player_bullet*>::iterator i = PlayerBulletList.begin(); i != PlayerBulletList.end(); ++i)
 	{
-		pos = (**i).GetPos();
-		solidcircle(pos.first, pos.second, (**i).GetRadio());
+		(**i).draw();
 	}
 	list<enemy_bullet*>::iterator i;
 	setfillcolor(0xAA00AA);
 	for (i = EnemyBulletList.begin(); i != EnemyBulletList.end(); ++i)
 	{
-		pos = (**i).GetPos();
-		solidcircle(pos.first, pos.second, (**i).GetRadio());
+		(**i).draw();
 	}
 	settextcolor(BLACK);
 	outtextxy(0, 620, "HP:");
 	outtextxy(0, 650, "MP:");
-	outtextxy(30, 620, &player_data[0][0]);
-	outtextxy(30, 650, &player_data[1][0]);
+	outtextxy(0, 680, "COIN:");
+	outtextxy(50, 620, &player_data[0][0]);
+	outtextxy(50, 650, &player_data[1][0]);
+	outtextxy(50, 680, &player_data[2][0]);
 }
 
 int operate_system::CheckCrash(std::pair<int, int>pos)
@@ -588,7 +643,7 @@ void operate_system::EnemyAttackPlayer(player& plane)
 	list<enemy_bullet*>::iterator i;
 	for (i = EnemyBulletList.begin(); i != EnemyBulletList.end();)
 	{
-		if (plane.ifBeAttacked((**i).GetPos(), (**i).GetRadio()))
+		if ((*i)->ifAttack(plane.GetPos()))
 		{
 			plane.beAttacked((**i).GetAtk());
 			delete *i;
@@ -604,7 +659,7 @@ void operate_system::DisappearEnemyBullet(void)
 	list<enemy_bullet*>::iterator i;
 	for (i = EnemyBulletList.begin(); i != EnemyBulletList.end();)
 	{
-		if ((**i).GetPos().second > 600 || (**i).GetPos().first < 0 || (**i).GetPos().first>600 || (**i).GetPos().second < 0)
+		if ((**i).CheckDisapear())
 		{
 			delete *i;
 			EnemyBulletList.erase(i++);
@@ -615,33 +670,137 @@ void operate_system::DisappearEnemyBullet(void)
 }
 
 void operate_system::SetAppearEnemyList(std::vector<std::array<int, 2>> tEnemyAppearList,
-	std::vector<std::vector<std::array<int, 3>>>tAppearEnemyMoveList)
+	std::vector<std::vector<std::array<int, 3>>>tAppearEnemyMoveList,
+	std::vector<std::vector<std::array<int, 3>>>tAppearEnemyFireList,
+	std::vector<std::array<int, 11>>tAppearEnemyAttribution)
 {
 	appear_enemy_list = tEnemyAppearList;
 	appear_enemy_step = appear_enemy_list.begin();
 	appear_enemy_move_list = tAppearEnemyMoveList;
 	appear_enemy_move_inf = appear_enemy_move_list.begin();
+	appear_enemy_fire_list = tAppearEnemyFireList;
+	appear_enemy_fire_inf = appear_enemy_move_list.begin();
+	appear_enemy_attribution = tAppearEnemyAttribution;
+	appear_enemy_attribution_inf = appear_enemy_attribution.begin();
 	appear_enemy_count = 0;
 }
 
-void operate_system::AppearEnemy(void)
+bool operate_system::AppearEnemy(void)
 {
 	++appear_enemy_count;
 	if (appear_enemy_count >= (*appear_enemy_step)[1])
 	{
 		appear_enemy_count = 0;
-		switch ((*appear_enemy_step)[0])
+		if ((*appear_enemy_step)[0] == 1)
 		{
-		case 0:
-			break;
-		default:
-			enemy* e = new enemy{ 100,20,0,5,250,0,30,0,1,0,2,0 };
-			break;
+			if ((*appear_enemy_attribution_inf)[0] != -1)
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					   (*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					   (*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					   (*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 };
+				(*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				this->CreateEnemy(*e);
+			}
+			else
+			{
+				enemy* e = new enemy{ 100 + int(100 * Ranf(en)),30 + int(30 * Ranf(en)),0,5 + int(5 * Ranf(en)),
+					25 * RanPos(en),0,60, RanDirx(en),RanDiry(en),RanDirx(en),RanDiry(en),0 };
+				(*e).SetMoveList(vector<array<int, 3>>{ {0, 1, 60000}});
+				(*e).SetFireList(vector<array<int, 3>>{ {0, 2, 60000}});
+				this->CreateEnemy(*e);
+			}
 		}
-		if ((appear_enemy_step + 1) != appear_enemy_list.end())
+		if ((*appear_enemy_step)[0] == 2)
+		{
+			enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+				(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+				(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+				(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 };
+		}
+		if ((appear_enemy_step + 2) != appear_enemy_list.end())
 		{
 			++appear_enemy_step;
+			++appear_enemy_fire_inf;
+			++appear_enemy_attribution_inf;
 			++appear_enemy_move_inf;
 		}
+		else
+		{
+			outtextxy(0, 600, "END");
+			return 0;
+		}
 	}
+	return 1;
+}
+
+void operate_system::tSet(void)
+{
+	vector<array<int, 2>>s;
+	vector<vector<array<int, 3>>>f;
+	vector<array<int, 11>>d;
+	vector<vector<array<int, 3>>>m;
+	for (int i = 0; i < 200; ++i)
+	{
+		array<int, 2>sa;
+		sa[0] = 1;
+		sa[1] = RanTime(en);
+		s.push_back(sa);
+		vector<array<int, 3>>ma;
+		for (int i = 0; i < 1; ++i)
+		{
+			array<int, 3>maa;
+			maa[0] = RanDirx(en);
+			maa[1] = RanDiry(en);
+			maa[2] = RanTime(en);
+			ma.push_back(maa);
+		}
+		ma.push_back({ 0,1,60000 });
+		m.push_back(ma);
+		d.push_back(array<int, 11>{ 100 + int(100 * Ranf(en)), 10 + int(10 * Ranf(en)), 0, 5 + int(5 * Ranf(en)),
+			25 * RanPos(en), 0, 60, RanDirx(en), RanDiry(en), RanDirx(en), RanDiry(en) + 1});
+		vector<array<int, 3>>fa;
+		for (int i = 0; i < 10; ++i)
+		{
+			array<int, 3>faa;
+			faa[0] = 0;
+			faa[1] = RanDiry(en) + 10;
+			faa[2] = RanTime(en) + 10;
+			fa.push_back(faa);
+		}
+		fa.push_back({ 0,2,60000 });
+		f.push_back(fa);
+	}
+	this->SetAppearEnemyList(s, m, f, d);
+}
+
+normal_1::normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
+	int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
+		tfire_speed_x, tfire_speed_y, tfire_count)
+{
+}
+
+enemy_bullet & normal_1::Fire(void)
+{
+	laser* b = new laser()
+}
+
+laser::laser(int ta, int tx, int ty, int tspeedx, int tspeedy) :enemy_bullet(ta, tx, ty, tspeedx, tspeedy)
+{
+}
+
+bool laser::CheckDisapear(void)
+{
+	if (GetRadio())
+		return false;
+}
+
+bool laser::ifAttack(std::pair<int, int> pos) const
+{
+	return false;
+}
+
+void laser::draw(void) const
+{
 }

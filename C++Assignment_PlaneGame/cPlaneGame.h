@@ -42,6 +42,7 @@ public:
 	void SetSpeed(int tspeed, int tframe);
 	int GetRadio(void)const;
 	void SetRadio(int tR);
+	virtual void draw(void)const;
 };
 class player
 {
@@ -56,7 +57,7 @@ private:
 	int skill1_cd;//玩家第一个技能的冷却时间
 public:
 	player(int thp, int tenergy, int tr, int tc, int tatk, int tdef, int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd);
-	bool ifBeAttacked(std::pair<int, int>pos,int radio)const;
+	player(std::string data);
 	void beAttacked(int a);
 	void beCrash(int a_hp);
 	std::pair<int, int> PlayerOperate(void)const;
@@ -66,6 +67,8 @@ public:
 	player_bullet& Fire(void);
 	bool ifFire(void);
 	std::vector<std::string> GetData(void)const;
+	void GainCoin(int c);
+	std::string ReturnInformation(void)const;
 };
 class enemy_bullet
 {
@@ -80,13 +83,23 @@ private:
 	int radio;
 public:
 	enemy_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy);
-	bool CheckDisapear(void);
+	virtual bool CheckDisapear(void);
 	void Move(void);
 	std::pair<int, int> GetPos(void)const;
 	int GetAtk(void)const;
 	void SetSpeed(int tspeedx,int tspeedy);
 	int GetRadio(void)const;
 	void SetRadio(int tR);
+	virtual bool ifAttack(std::pair<int, int>pos)const;
+	virtual void draw(void)const;
+};
+class laser : public enemy_bullet
+{
+public:
+	laser(int ta, int tx, int ty, int tspeedx, int tspeedy);
+	bool CheckDisapear(void);
+	bool ifAttack(std::pair<int, int>pos)const;
+	void draw(void)const;
 };
 class enemy
 {
@@ -107,8 +120,8 @@ private:
 	int enemy_length;
 	std::vector<std::array<int, 3>>move_list;
 	std::vector<std::array<int, 3>>::iterator move_step;
-	std::vector<std::array<int, 2>>fire_list;
-	std::vector<std::array<int, 2>>::iterator fire_step;
+	std::vector<std::array<int, 3>>fire_list;
+	std::vector<std::array<int, 3>>::iterator fire_step;
 	int move_count, fire_count, move_list_flag, fire_list_flag;
 	int bullet_radio;
 public:
@@ -117,7 +130,7 @@ public:
 	void move(void);
 	bool ifBeAttacked(int bx, int by)const;
 	void beAttacked(int);
-	virtual bool countFire(void);
+	bool countFire(void);
 	virtual enemy_bullet& Fire(void);
 	bool ifKill(void)const;
 	bool ifLeftRightLimit(void)const;
@@ -131,7 +144,7 @@ public:
 	bool CheckDisapear(void)const;
 	bool CheckCrash(std::pair<int, int>pos)const;
 	virtual void SetMoveList(std::vector<std::array<int, 3>>tmove_list);
-	virtual void SetFireList(std::vector<std::array<int, 2>>tfire_list);
+	virtual void SetFireList(std::vector<std::array<int, 3>>tfire_list);
 	virtual void ChangeFireState(void);
 	virtual void ChangeMoveState(void);
 	virtual void UseSkill(void);
@@ -139,20 +152,14 @@ public:
 	bool GetFlag(int)const;
 	void SetLength(int tL);
 	int GetLength(void)const;
+	virtual void Draw(void)const;
 };
-class boss : public enemy
+class normal_1 : public enemy
 {
-private:
-
 public:
-
-};
-class normal_enemy : public enemy
-{
-private:
-
-public:
-
+	normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
+		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
+	enemy_bullet& Fire(void);
 };
 class operate_system
 {
@@ -165,6 +172,10 @@ private:
 	std::vector<std::array<int, 2>>::iterator appear_enemy_step;
 	std::vector<std::vector<std::array<int, 3>>>appear_enemy_move_list;
 	std::vector<std::vector<std::array<int, 3>>>::iterator appear_enemy_move_inf;
+	std::vector<std::vector<std::array<int, 3>>>appear_enemy_fire_list;
+	std::vector<std::vector<std::array<int, 3>>>::iterator appear_enemy_fire_inf;
+	std::vector<std::array<int, 11>>appear_enemy_attribution;
+	std::vector<std::array<int, 11>>::iterator appear_enemy_attribution_inf;
 public:
 	operate_system();
 	void CreateEnemy(enemy& tenemy);
@@ -180,10 +191,14 @@ public:
 	void DisappearPlayerBullet(void);
 	void MoveEnemyBullet(void);
 	void EnemyFire(void);
-	void EnemyAttackPlayer(player&);
+	void EnemyAttackPlayer(player& plane);
 	void DisappearEnemyBullet(void);
 	void SetAppearEnemyList(std::vector<std::array<int, 2>>tEnemyAppearList, 
-		std::vector<std::vector<std::array<int, 3>>>tAppearEnemyMoveList);
-	void AppearEnemy(void);
+		std::vector<std::vector<std::array<int, 3>>>tAppearEnemyMoveList,
+		std::vector<std::vector<std::array<int, 3>>>tAppearEnemyFireList,
+		std::vector<std::array<int, 11>>tAppearEnemyAttribution);
+	bool AppearEnemy(void);
+	void tSet(void);
+
 };
 #endif // !_cPlaneGame_H_
