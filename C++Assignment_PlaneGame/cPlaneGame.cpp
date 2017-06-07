@@ -158,6 +158,11 @@ int enemy::GetLength(void) const
 	return enemy_length;
 }
 
+void enemy::SetBulletRadio(int r)
+{
+	bullet_radio = r;
+}
+
 void enemy::Draw(void) const
 {
 	int l_hp = (hp  * enemy_length) / total_hp;
@@ -165,6 +170,16 @@ void enemy::Draw(void) const
 	solidrectangle(x, y, x + ENEMY, y + ENEMY);
 	setfillcolor(0x0000FF);
 	solidrectangle(x, y - 7, x + l_hp, y - 2);
+}
+
+std::pair<int, int> enemy::GetFireSpeed(void) const
+{
+	return std::pair<int, int>(fire_speed_x, fire_speed_y);
+}
+
+int enemy::GetBulletRadio(void) const
+{
+	return bullet_radio;
 }
 
 enemy::enemy(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
@@ -447,6 +462,7 @@ void enemy_bullet::Move(void)
 	{
 		x += speed_x;
 		y += speed_y;
+		now_frame = 0;
 	}
 }
 
@@ -483,10 +499,21 @@ bool enemy_bullet::ifAttack(pair<int, int> pos) const
 	return false;
 }
 
-void enemy_bullet::draw(void) const
+void enemy_bullet::Draw(void) const
 {
 	solidcircle(x, y, radio);
 }
+
+int enemy_bullet::GetX(void) const
+{
+	return x;
+}
+
+int enemy_bullet::GetY(void) const
+{
+	return y;
+}
+
 
 void operate_system::DrawToScreen(pair<int, int>plp, vector<string>player_data)
 {
@@ -507,7 +534,7 @@ void operate_system::DrawToScreen(pair<int, int>plp, vector<string>player_data)
 	setfillcolor(0xAA00AA);
 	for (i = EnemyBulletList.begin(); i != EnemyBulletList.end(); ++i)
 	{
-		(**i).draw();
+		(**i).Draw();
 	}
 	settextcolor(BLACK);
 	outtextxy(0, 620, "HP:");
@@ -695,12 +722,13 @@ bool operate_system::AppearEnemy(void)
 		{
 			if ((*appear_enemy_attribution_inf)[0] != -1)
 			{
-				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+				enemy* e = new normal_1{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
 					   (*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
 					   (*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					   (*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 };
 				(*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(10);
 				this->CreateEnemy(*e);
 			}
 			else
@@ -759,17 +787,17 @@ void operate_system::tSet(void)
 		ma.push_back({ 0,1,60000 });
 		m.push_back(ma);
 		d.push_back(array<int, 11>{ 100 + int(100 * Ranf(en)), 10 + int(10 * Ranf(en)), 0, 5 + int(5 * Ranf(en)),
-			25 * RanPos(en), 0, 60, RanDirx(en), RanDiry(en), RanDirx(en), RanDiry(en) + 1});
+			25 * RanPos(en), 0, 1, RanDirx(en), RanDiry(en), 0, 10});
 		vector<array<int, 3>>fa;
 		for (int i = 0; i < 10; ++i)
 		{
 			array<int, 3>faa;
 			faa[0] = 0;
-			faa[1] = RanDiry(en) + 10;
-			faa[2] = RanTime(en) + 10;
+			faa[1] = 10;
+			faa[2] = 60;
 			fa.push_back(faa);
 		}
-		fa.push_back({ 0,2,60000 });
+		fa.push_back({ 0,10,60000 });
 		f.push_back(fa);
 	}
 	this->SetAppearEnemyList(s, m, f, d);
@@ -779,11 +807,16 @@ normal_1::normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int t
 	int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
 		tfire_speed_x, tfire_speed_y, tfire_count)
 {
+	
 }
 
 enemy_bullet & normal_1::Fire(void)
 {
-	laser* b = new laser()
+	laser* b = new laser(GetAtk(), GetPos().first + (GetLength() - LASERLENGTH) / 2,
+		GetPos().second + GetLength(), GetFireSpeed().first, GetFireSpeed().second);
+	b->SetRadio(GetBulletRadio());
+	b->SetSpeed(0, GetBulletRadio());
+	return *b;
 }
 
 laser::laser(int ta, int tx, int ty, int tspeedx, int tspeedy) :enemy_bullet(ta, tx, ty, tspeedx, tspeedy)
@@ -792,15 +825,20 @@ laser::laser(int ta, int tx, int ty, int tspeedx, int tspeedy) :enemy_bullet(ta,
 
 bool laser::CheckDisapear(void)
 {
-	if (GetRadio())
-		return false;
+	if (GetX() < 0 || GetX() + LASERLENGTH > 600 || GetY() < 0 || GetY() + GetRadio() > 600)
+		return 1;
+	return false;
 }
 
 bool laser::ifAttack(std::pair<int, int> pos) const
 {
+	if (GetX() > pos.first - LASERLENGTH && GetX() < pos.first + PLAYER &&
+		GetY() > pos.second - GetRadio() && GetY() < pos.second + PLAYER)
+		return 1;
 	return false;
 }
 
-void laser::draw(void) const
+void laser::Draw(void) const
 {
+	solidrectangle(GetX(), GetY(), GetX() + LASERLENGTH, GetY() + GetRadio());
 }

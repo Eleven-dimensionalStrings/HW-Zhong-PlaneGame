@@ -22,6 +22,7 @@
 #define ENEMY 25
 #define PLAYER 50
 #define BULLET 3
+#define LASERLENGTH 5
 class player_bullet
 {
 private:
@@ -42,7 +43,7 @@ public:
 	void SetSpeed(int tspeed, int tframe);
 	int GetRadio(void)const;
 	void SetRadio(int tR);
-	virtual void draw(void)const;
+	void draw(void)const;
 };
 class player
 {
@@ -91,7 +92,9 @@ public:
 	int GetRadio(void)const;
 	void SetRadio(int tR);
 	virtual bool ifAttack(std::pair<int, int>pos)const;
-	virtual void draw(void)const;
+	virtual void Draw(void)const;
+	int GetX(void)const;
+	int GetY(void)const;
 };
 class laser : public enemy_bullet
 {
@@ -99,7 +102,7 @@ public:
 	laser(int ta, int tx, int ty, int tspeedx, int tspeedy);
 	bool CheckDisapear(void);
 	bool ifAttack(std::pair<int, int>pos)const;
-	void draw(void)const;
+	void Draw(void)const;
 };
 class enemy
 {
@@ -152,7 +155,10 @@ public:
 	bool GetFlag(int)const;
 	void SetLength(int tL);
 	int GetLength(void)const;
+	void SetBulletRadio(int r);
 	virtual void Draw(void)const;
+	std::pair<int, int> GetFireSpeed(void)const;
+	int GetBulletRadio(void)const;
 };
 class normal_1 : public enemy
 {
