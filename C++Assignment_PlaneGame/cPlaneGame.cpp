@@ -9,7 +9,7 @@ uniform_int_distribution<int>RanTime(60, 180);
 player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
 	int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd) :
 	hp(thp), energy(tenergy), rate(tr), count(tc), atk(tatk), def(tdef), coin(tcoin),
-	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd)
+	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd),skill1_level(0),level(0)
 {
 }
 
@@ -126,6 +126,22 @@ std::string player::ReturnInformation(void) const
 	return reinterpret_cast<const char*>(this);
 }
 
+bool player::ifBeKilled(void) const
+{
+	if (hp <= 0)
+		return 1;
+	return false;
+}
+
+void player::BuyEquipment(void)
+{
+
+}
+
+void player::LearnSkill(void)
+{
+}
+
 player_bullet & player::Fire(void)
 {
 	--energy;
@@ -180,6 +196,11 @@ std::pair<int, int> enemy::GetFireSpeed(void) const
 int enemy::GetBulletRadio(void) const
 {
 	return bullet_radio;
+}
+
+std::pair<int, int> enemy::GetSpeed(void) const
+{
+	return std::pair<int, int>(move_speed_x, move_speed_y);
 }
 
 enemy::enemy(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
@@ -776,10 +797,10 @@ void operate_system::tSet(void)
 		sa[1] = RanTime(en);
 		s.push_back(sa);
 		vector<array<int, 3>>ma;
-		for (int i = 0; i < 1; ++i)
+		for (int i = 0; i < 10; ++i)
 		{
 			array<int, 3>maa;
-			maa[0] = RanDirx(en);
+			maa[0] = RanDiry(en);
 			maa[1] = RanDiry(en);
 			maa[2] = RanTime(en);
 			ma.push_back(maa);
@@ -807,7 +828,14 @@ normal_1::normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int t
 	int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
 		tfire_speed_x, tfire_speed_y, tfire_count)
 {
-	
+
+}
+
+bool normal_1::countFire(void)
+{
+	if (GetSpeed().first != 0)
+		return 0;
+	return 1;
 }
 
 enemy_bullet & normal_1::Fire(void)

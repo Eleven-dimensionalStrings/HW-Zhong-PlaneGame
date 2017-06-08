@@ -56,6 +56,9 @@ private:
 	int x, y;//坐标以窗口左上角为（0，0），x为横坐标，y为纵坐标
 	int skill1_n;//玩家第一个技能的代号，用于确定该技能是什么
 	int skill1_cd;//玩家第一个技能的冷却时间
+	int skill1_level;
+	int level;
+
 public:
 	player(int thp, int tenergy, int tr, int tc, int tatk, int tdef, int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd);
 	player(std::string data);
@@ -70,6 +73,9 @@ public:
 	std::vector<std::string> GetData(void)const;
 	void GainCoin(int c);
 	std::string ReturnInformation(void)const;
+	bool ifBeKilled(void)const;
+	void BuyEquipment(void);
+	void LearnSkill(void);
 };
 class enemy_bullet
 {
@@ -133,7 +139,7 @@ public:
 	void move(void);
 	bool ifBeAttacked(int bx, int by)const;
 	void beAttacked(int);
-	bool countFire(void);
+	virtual bool countFire(void);
 	virtual enemy_bullet& Fire(void);
 	bool ifKill(void)const;
 	bool ifLeftRightLimit(void)const;
@@ -159,12 +165,14 @@ public:
 	virtual void Draw(void)const;
 	std::pair<int, int> GetFireSpeed(void)const;
 	int GetBulletRadio(void)const;
+	std::pair<int, int>GetSpeed(void)const;
 };
 class normal_1 : public enemy
 {
 public:
 	normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
 		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
+	bool countFire(void);
 	enemy_bullet& Fire(void);
 };
 class operate_system

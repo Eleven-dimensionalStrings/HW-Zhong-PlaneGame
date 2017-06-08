@@ -44,7 +44,7 @@ int main()
 		SetWorkingImage(&MAP);
 		cleardevice();
 		PlayerPlane.MovePlayer(PlayerPlane.PlayerOperate());
-		if (!OperateSystem.AppearEnemy())
+		if (!OperateSystem.AppearEnemy() || PlayerPlane.ifBeKilled())
 			break;
 		OperateSystem.MoveEnemy();
 		OperateSystem.EnemyFire();
@@ -68,5 +68,6 @@ int main()
 	char a[100]{ 48,49,50,51,52,53,54,55,56,57,58 };
 	string b = a;
 	cout << b << endl;
+	cout << PlayerPlane.GetData()[0] << endl;
 	system("pause");
 }
