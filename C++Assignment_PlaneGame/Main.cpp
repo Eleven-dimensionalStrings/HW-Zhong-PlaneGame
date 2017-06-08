@@ -35,7 +35,7 @@ int main()
 	system("pause");
 	setfillcolor(LIGHTCYAN);
 	SetWorkingImage(&MAP);
-	setbkcolor(0xF9FFFF);
+	setbkcolor(0xF6FFFF);
 	cout << clock() << endl;
 	OperateSystem.tSet();
 	cout << clock() << endl;
@@ -48,6 +48,7 @@ int main()
 			break;
 		OperateSystem.MoveEnemy();
 		OperateSystem.EnemyFire();
+		OperateSystem.EnemyUseSkill();
 		OperateSystem.MoveEnemyBullet();
 		PlayerPlane.beCrash(OperateSystem.CheckCrash(PlayerPlane.GetPos()));
 		OperateSystem.CheckDisapear();
@@ -55,7 +56,7 @@ int main()
 			OperateSystem.CreatePlayerBullet(PlayerPlane.Fire());
 		OperateSystem.MovePlayerBullet();
 		OperateSystem.DisappearPlayerBullet();
-		OperateSystem.PlayerAttackEnemy();
+		OperateSystem.PlayerAttackEnemy(PlayerPlane);
 		OperateSystem.DisappearEnemyBullet();
 		OperateSystem.EnemyAttackPlayer(PlayerPlane);
 		PlayerPlane.GainCoin(OperateSystem.CheckKill());

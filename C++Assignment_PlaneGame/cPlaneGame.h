@@ -58,7 +58,7 @@ private:
 	int skill1_cd;//玩家第一个技能的冷却时间
 	int skill1_level;
 	int level;
-
+	int steel_hp_persent;
 public:
 	player(int thp, int tenergy, int tr, int tc, int tatk, int tdef, int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd);
 	player(std::string data);
@@ -76,6 +76,8 @@ public:
 	bool ifBeKilled(void)const;
 	void BuyEquipment(void);
 	void LearnSkill(void);
+	int GetSteelHpPersent(void)const;
+	void SteelHp(int dhp);
 };
 class enemy_bullet
 {
@@ -137,17 +139,17 @@ public:
 	enemy(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
 		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
 	void move(void);
-	bool ifBeAttacked(int bx, int by)const;
-	void beAttacked(int);
+	virtual bool ifBeAttacked(int bx, int by)const;
+	virtual int beAttacked(int);
 	virtual bool countFire(void);
 	virtual enemy_bullet& Fire(void);
 	bool ifKill(void)const;
 	bool ifLeftRightLimit(void)const;
 	bool ifDownLimit(void)const;
-	bool ifCrashPlayer(int px, int py)const;
 	std::pair<int, int> GetPos(void)const;
 	int GetHpPercent(void)const;
 	int GetAtk(void)const;
+	int GetDef(void)const;
 	int GetHp(void)const;
 	int GetCoin(void)const;
 	bool CheckDisapear(void)const;
@@ -166,14 +168,25 @@ public:
 	std::pair<int, int> GetFireSpeed(void)const;
 	int GetBulletRadio(void)const;
 	std::pair<int, int>GetSpeed(void)const;
+	virtual bool countSkill(void);
+	void ModifyHp(int a);
+	virtual int GetSkillKind(void)const;
 };
 class normal_1 : public enemy
 {
+private:
+	int skill_cd, skill_count, skill_time, skill_flag, skill_kind;
 public:
 	normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
 		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
 	bool countFire(void);
 	enemy_bullet& Fire(void);
+	void SetSkill(int tcd, int ttime);
+	bool countSkill(void);//flag为技能使用状态，1为正在使用。返回1则需要切换状态。
+	void UseSkill(void);
+	int beAttacked(int a);
+	int GetSkillKind(void)const;
+	void Draw(void)const;
 };
 class operate_system
 {
@@ -200,7 +213,7 @@ public:
 	int CheckCrash(std::pair<int, int>);//返回碰撞enemy的hp*atk
 	void CheckDisapear(void);
 	int CheckKill(void);//返回获得金币总数
-	void PlayerAttackEnemy(void);
+	void PlayerAttackEnemy(player& plane);
 	void MovePlayerBullet(void);
 	void DisappearPlayerBullet(void);
 	void MoveEnemyBullet(void);
@@ -213,6 +226,7 @@ public:
 		std::vector<std::array<int, 11>>tAppearEnemyAttribution);
 	bool AppearEnemy(void);
 	void tSet(void);
+	void EnemyUseSkill(void);
 
 };
 #endif // !_cPlaneGame_H_

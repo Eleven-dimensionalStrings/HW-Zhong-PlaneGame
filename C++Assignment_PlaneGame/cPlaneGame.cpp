@@ -9,7 +9,7 @@ uniform_int_distribution<int>RanTime(60, 180);
 player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
 	int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd) :
 	hp(thp), energy(tenergy), rate(tr), count(tc), atk(tatk), def(tdef), coin(tcoin),
-	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd),skill1_level(0),level(0)
+	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd), skill1_level(0), level(0),steel_hp_persent(50)
 {
 }
 
@@ -142,6 +142,16 @@ void player::LearnSkill(void)
 {
 }
 
+int player::GetSteelHpPersent(void) const
+{
+	return steel_hp_persent;
+}
+
+void player::SteelHp(int dhp)
+{
+	hp += dhp*steel_hp_persent / 100;
+}
+
 player_bullet & player::Fire(void)
 {
 	--energy;
@@ -203,6 +213,11 @@ std::pair<int, int> enemy::GetSpeed(void) const
 	return std::pair<int, int>(move_speed_x, move_speed_y);
 }
 
+bool enemy::countSkill(void)
+{
+	return false;
+}
+
 enemy::enemy(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
 	int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count) :
 	hp(thp), atk(tatk), def(tdef), coin(tcoin), x(tx), y(ty), fire_rate(tatkr), move_speed_x(tdir_x),
@@ -232,9 +247,10 @@ bool enemy::ifBeAttacked(int bx, int by)const
 		return 0;
 }
 
-void enemy::beAttacked(int patk)
+int enemy::beAttacked(int patk)
 {
 	hp -= (patk > def ? patk - def : 1);
+	return (patk > def ? patk - def : 1);
 }
 
 bool enemy::countFire(void)
@@ -265,7 +281,7 @@ bool enemy::ifKill(void)const
 
 bool enemy::ifLeftRightLimit(void) const
 {
-	if ((x > 575 && move_speed_x > 0) || (x < 0 && move_speed_x < 0))
+	if ((x > 600 - GetLength() && move_speed_x > 0) || (x < 0 && move_speed_x < 0))
 		return 1;
 	else
 		return 0;
@@ -273,14 +289,7 @@ bool enemy::ifLeftRightLimit(void) const
 
 bool enemy::ifDownLimit(void) const
 {
-	if (y >= 575)
-		return 1;
-	else
-		return 0;
-}
-bool enemy::ifCrashPlayer(int px, int py)const
-{
-	if (x >= px - 25 && x <= px + 50 && y >= py - 25 && y <= py + 50)
+	if (y >= 600 - GetLength())
 		return 1;
 	else
 		return 0;
@@ -301,6 +310,11 @@ int enemy::GetAtk(void) const
 	return atk;
 }
 
+int enemy::GetDef(void) const
+{
+	return def;
+}
+
 int enemy::GetHp(void) const
 {
 	return hp;
@@ -313,7 +327,7 @@ int enemy::GetCoin(void) const
 
 bool enemy::CheckCrash(pair<int, int> pos) const
 {
-	if (x > pos.first - ENEMY && x<pos.first + PLAYER && y>pos.second - ENEMY && y < pos.second + PLAYER)
+	if (x >= pos.first - GetLength() && x <= pos.first + 50 && y >= pos.second - GetLength() && y <= pos.second + 50)
 		return 1;
 	else
 		return 0;
@@ -363,6 +377,16 @@ void enemy::ChangeMoveState(void)
 
 void enemy::UseSkill(void)
 {
+}
+
+void enemy::ModifyHp(int a)
+{
+	hp += a;
+}
+
+int enemy::GetSkillKind(void) const
+{
+	return 0;
 }
 
 void enemy::SetFrame(int tframe)
@@ -538,7 +562,7 @@ int enemy_bullet::GetY(void) const
 
 void operate_system::DrawToScreen(pair<int, int>plp, vector<string>player_data)
 {
-
+	//setlinecolor()
 	for (list<enemy*>::iterator i = EnemyList.begin(); i != EnemyList.end(); ++i)
 	{
 		(**i).Draw();
@@ -617,7 +641,7 @@ int operate_system::CheckKill(void)
 	return coin;
 }
 
-void operate_system::PlayerAttackEnemy(void)
+void operate_system::PlayerAttackEnemy(player& plane)
 {
 	list<enemy*>::iterator i;
 	list<player_bullet*>::iterator j;
@@ -627,7 +651,7 @@ void operate_system::PlayerAttackEnemy(void)
 		{
 			if ((**i).ifBeAttacked((**j).GetPos().first, (**j).GetPos().second))
 			{
-				(**i).beAttacked((**j).GetAtk());
+				plane.SteelHp((**i).beAttacked((**j).GetAtk()));
 				delete *j;
 				PlayerBulletList.erase(j++);
 			}
@@ -681,7 +705,7 @@ void operate_system::EnemyFire(void)
 			{
 				(**i).ChangeFireState();
 			}
-			EnemyBulletList.push_back(&(**i).Fire());
+			CreateEnemyBullet((**i).Fire());
 		}
 	}
 }
@@ -750,6 +774,7 @@ bool operate_system::AppearEnemy(void)
 				(*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
 				(*e).SetBulletRadio(10);
+				(*e).SetLength(50);
 				this->CreateEnemy(*e);
 			}
 			else
@@ -824,9 +849,22 @@ void operate_system::tSet(void)
 	this->SetAppearEnemyList(s, m, f, d);
 }
 
+void operate_system::EnemyUseSkill(void)
+{
+	list<enemy*>::iterator i;
+	for (i = EnemyList.begin(); i != EnemyList.end(); ++i)
+	{
+		if ((**i).countSkill())
+		{
+			if ((**i).GetSkillKind() == 1)
+				(**i).UseSkill();
+		}
+	}
+}
+
 normal_1::normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
 	int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
-		tfire_speed_x, tfire_speed_y, tfire_count)
+		tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(1), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60)
 {
 
 }
@@ -846,6 +884,72 @@ enemy_bullet & normal_1::Fire(void)
 	b->SetSpeed(0, GetBulletRadio());
 	return *b;
 }
+
+void normal_1::SetSkill(int tcd, int ttime)
+{
+	skill_cd = tcd;
+	skill_time = ttime;
+}
+
+bool normal_1::countSkill(void)
+{
+	++skill_count;
+	if (skill_flag == 1 && skill_count >= skill_time)
+	{
+		skill_count = 0;
+		return 1;
+	}
+	if (skill_flag == 0 && skill_count >= skill_cd)
+	{
+		skill_count = 0;
+		return 1;
+	}
+	return 0;
+}
+
+void normal_1::UseSkill(void)
+{
+	skill_flag = (skill_flag ? 0 : 1);
+}
+
+int normal_1::beAttacked(int a)
+{
+	if (skill_flag == 0)
+	{
+		if (a > GetDef())
+		{
+			ModifyHp(GetDef() - a);
+			return a - GetDef();
+		}
+		else
+		{
+			return 1;
+			ModifyHp(-1);
+		}
+	}
+	return 0;
+}
+
+int normal_1::GetSkillKind(void) const
+{
+	return skill_kind;
+}
+
+void normal_1::Draw(void) const
+{
+	setlinecolor(0x00FF00);
+	setfillcolor(0x00FF00);
+	if (skill_flag == 1)
+	{
+		circle(GetPos().first + GetLength() / 2, GetPos().second + GetLength() / 2, int(GetLength() / 1.414));
+	}
+	int l_hp = GetLength()*GetHpPercent() / 100;
+	solidrectangle(GetPos().first, GetPos().second, GetPos().first + GetLength(), GetPos().second + GetLength());
+	setfillcolor(0x0000FF);
+	solidrectangle(GetPos().first, GetPos().second - 7, GetPos().first + l_hp, GetPos().second - 2);
+}
+
+
 
 laser::laser(int ta, int tx, int ty, int tspeedx, int tspeedy) :enemy_bullet(ta, tx, ty, tspeedx, tspeedy)
 {
