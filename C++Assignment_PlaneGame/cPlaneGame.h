@@ -2,6 +2,7 @@
 #ifndef _cPlaneGame_H_
 #define _cPlaneGame_H_
 #include <string>
+#include <iostream>
 #include <fstream>
 #include <list>
 #include <vector>
@@ -18,7 +19,6 @@
 #define VK_D 0x44
 #define VK_J 0x4A
 #define VK_K 0x4B
-#define VK_L 0x4C
 #define ENEMY 25
 #define PLAYER 50
 #define BULLET 3
@@ -56,11 +56,9 @@ private:
 	int atk, def;
 	int coin;//玩家金币，可购买属性和装备
 	int x, y;//坐标以窗口左上角为（0，0），x为横坐标，y为纵坐标
-	int skill1_n;//玩家第一个技能的代号，用于确定该技能是什么
-	int skill1_cd;//玩家第一个技能的冷却时间
-	int skill1_level;
 	int level;
 	int steel_hp_persent;
+	int eq1, eq2, eq3;
 public:
 	player(int thp, int tenergy, int tr, int tc, int tatk, int tdef, int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd);
 	player(std::string data);
@@ -77,9 +75,11 @@ public:
 	std::string ReturnInformation(void)const;
 	bool ifBeKilled(void)const;
 	void BuyEquipment(void);
-	void LearnSkill(void);
 	int GetSteelHpPersent(void)const;
 	void SteelHp(int dhp);
+	int GetFireMinus(void)const;
+	int GetExAtk(void)const;
+	int GetExDef(void)const;
 };
 class enemy_bullet
 {

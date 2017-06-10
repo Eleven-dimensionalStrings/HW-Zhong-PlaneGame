@@ -8,23 +8,6 @@ int main()
 	player PlayerPlane(1000, 1000, 10, 0, 30, 5, 0, 275, 549, 0, 0);
 	uniform_int_distribution<int>RanAtk(10, 20);
 	uniform_int_distribution<int>RanHp(100, 150);
-	/*for (int j = 0; j < 10; ++j)
-	{
-		enemy * e = new enemy(RanHp(en), RanAtk(en), 0, 5, ENEMY * RanPos(en), 0, 60, -1, 1, RanDirx(en) / 2, RanDiry(en) / 2 + 2, 0);
-		vector<array<int, 3>>a;
-		array<int, 3>b{ 0,2,20 };
-		a.push_back(b);
-		for (int i = 0; i < 100; ++i)
-		{
-			b[0] = RanDirx(en);
-			b[1] = RanDiry(en);
-			b[2] = RanHp(en);
-			a.push_back(b);
-		}
-		e->SetMoveList(a);
-		OperateSystem.CreateEnemy(*e);
-	}*/
-
 	initgraph(600, 800, SHOWCONSOLE);
 	HWND draw = GetHWnd();
 	MoveWindow(draw, 400, 0, 615, 839, NULL);
@@ -32,13 +15,13 @@ int main()
 	cleardevice();
 	IMAGE MAP(600, 800);
 	settextcolor(0x000000);
-	system("pause");
 	setfillcolor(LIGHTCYAN);
 	SetWorkingImage(&MAP);
 	setbkcolor(0xF6FFFF);
 	cout << clock() << endl;
 	OperateSystem.tSet();
 	cout << clock() << endl;
+	PlayerPlane.BuyEquipment();
 	while (!GetAsyncKeyState(VK_ESCAPE))
 	{
 		SetWorkingImage(&MAP);

@@ -7,11 +7,11 @@ std::uniform_int_distribution<int>RanPos(0, 24);
 std::uniform_int_distribution<int>RanDirx(-2, 2);
 std::uniform_int_distribution<int>RanDiry(0, 2);
 std::uniform_int_distribution<int>RanTime(60, 180);
-std::uniform_int_distribution<int>RanKind(1, 3);
+std::uniform_int_distribution<int>RanKind(1, 4);
 player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
 	int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd) :
 	hp(thp), energy(tenergy), rate(tr), count(tc), atk(tatk), def(tdef), coin(tcoin),
-	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd), skill1_level(0), level(0), steel_hp_persent(50)
+	x(tx), y(ty), level(1), steel_hp_persent(50), eq1(0), eq2(0), eq3(0)
 {
 }
 
@@ -75,7 +75,7 @@ bool player::ifFire(void)
 {
 	if (GetAsyncKeyState(VK_J))
 		++count;
-	if (count >= rate)
+	if (count + GetFireMinus() >= rate)
 		return true;
 	return false;
 }
@@ -137,11 +137,69 @@ bool player::ifBeKilled(void) const
 
 void player::BuyEquipment(void)
 {
-
-}
-
-void player::LearnSkill(void)
-{
+	MOUSEMSG click;
+	int chose = 1, bag = 1;
+	string seq1 = "", seq2 = "", seq3 = "";
+	IMAGE screen{ 600,800 };
+	IMAGE eq01, eq02, eq03, eq11, eq12, eq13, eq21, eq22, eq23, eq31, eq32, eq33;
+	loadimage(&eq02, "2.bmp", 85, 64, 0);
+	loadimage(&eq01, "1.bmp", 85, 64, 0);
+	loadimage(&eq03, "3.bmp", 85, 64, 0);
+	loadimage(&eq11, "11.bmp", 85, 64, 0);
+	loadimage(&eq12, "12.bmp", 85, 64, 0);
+	loadimage(&eq13, "13.bmp", 85, 64, 0);
+	loadimage(&eq21, "21.bmp", 85, 64, 0);
+	loadimage(&eq22, "22.bmp", 85, 64, 0);
+	loadimage(&eq23, "23.bmp", 85, 64, 0);
+	loadimage(&eq31, "31.bmp", 85, 64, 0);
+	loadimage(&eq32, "32.bmp", 85, 64, 0);
+	loadimage(&eq33, "33.bmp", 85, 64, 0);
+	while (!GetAsyncKeyState(VK_ESCAPE))
+	{
+		SetWorkingImage(&screen);
+		setbkcolor(WHITE);
+		cleardevice();
+		click = GetMouseMsg();
+		if (click.mkLButton)
+		{
+			for (int x = 50; x <= 250; x += 100)
+			{
+				for (int y = 50; y <= 410; y += 120)
+				{
+					if (click.x >= x && click.x < x + 85 && click.y >= y && click.y < y + 64)
+					{
+						chose = (x - 50) / 100 + ((10 * (y - 50)) / 120) + 1;
+					}
+				}
+			}
+			for (int i = 1; i <= 3; ++i)
+			{
+				if (click.x >= i * 160 - 80 && click.x < i * 160 + 4 && click.y >= 500 && click.y < 564)
+					bag = i;
+			}
+		}
+		putimage(50, 50, &eq01);
+		putimage(150, 50, &eq02);
+		putimage(250, 50, &eq03);
+		putimage(50, 170, &eq11);
+		putimage(150, 170, &eq12);
+		putimage(250, 170, &eq13);
+		putimage(50, 290, &eq21);
+		putimage(150, 290, &eq22);
+		putimage(250, 290, &eq23);
+		putimage(50, 410, &eq31);
+		putimage(150, 410, &eq32);
+		putimage(250, 410, &eq33);
+		setlinecolor(BLACK);
+		rectangle(((chose % 10) - 1) * 100 + 45, (chose / 10) * 120 + 45, ((chose % 10) - 1) * 100 + 140, (chose / 10) * 120 + 119);
+		rectangle(bag * 160 - 85, 495, bag * 160 + 10, 569);
+		setlinecolor(BLUE);
+		rectangle(80, 500, 165, 564);
+		rectangle(240, 500, 325, 564);
+		rectangle(400, 500, 485, 564);
+		SetWorkingImage(0);
+		putimage(0, 0, &screen);
+	}
 }
 
 int player::GetSteelHpPersent(void) const
@@ -151,7 +209,22 @@ int player::GetSteelHpPersent(void) const
 
 void player::SteelHp(int dhp)
 {
-	hp += dhp*steel_hp_persent / 100;
+	hp += dhp*GetSteelHpPersent() / 100;
+}
+
+int player::GetFireMinus(void) const
+{
+	return 0;
+}
+
+int player::GetExAtk(void) const
+{
+	return 0;
+}
+
+int player::GetExDef(void) const
+{
+	return 0;
 }
 
 player_bullet & player::Fire(void)
@@ -823,28 +896,92 @@ bool operate_system::AppearEnemy(void)
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
+			else
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
 		}
 		if ((*appear_enemy_step)[0] == 2)
 		{
-			enemy* e = new normal_2{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
-				(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
-				(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
-				(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
-			(*e).SetFireList(*appear_enemy_fire_inf);
-			(*e).SetBulletRadio(5);
-			(*e).SetLength(25);
-			this->CreateEnemy(*e);
+			if ((*appear_enemy_attribution_inf)[0] != -1)
+			{
+				enemy* e = new normal_2{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
+			else
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
 		}
 		if ((*appear_enemy_step)[0] == 3)
 		{
-			enemy* e = new normal_3{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
-				(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
-				(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
-				(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
-			(*e).SetFireList(*appear_enemy_fire_inf);
-			(*e).SetBulletRadio(5);
-			(*e).SetLength(25);
-			this->CreateEnemy(*e);
+			if ((*appear_enemy_attribution_inf)[0] != -1)
+			{
+				enemy* e = new normal_3{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
+			else
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
+		}
+		if ((*appear_enemy_step)[0] == 4)
+		{
+			if ((*appear_enemy_attribution_inf)[0] != -1)
+			{
+				enemy* e = new normal_4{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
+			else
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
 		}
 		if ((appear_enemy_step + 2) != appear_enemy_list.end())
 		{
@@ -872,7 +1009,7 @@ void operate_system::tSet(void)
 	{
 		array<int, 2>sa;
 		sa[0] = RanKind(en);
-		sa[1] = 3 * RanTime(en);
+		sa[1] = 2 * RanTime(en);
 		s.push_back(sa);
 		vector<array<int, 3>>ma;
 		for (int i = 0; i < 10; ++i)
@@ -1186,7 +1323,7 @@ enemy_bullet & normal_3::Fire(void)
 
 normal_4::normal_4(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
 	int tfire_speed_x, int tfire_speed_y, int tfire_count) : enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
-			tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(3), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60),
+		tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(3), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60),
 	skill_quantity(1)
 {
 }
@@ -1200,6 +1337,10 @@ void normal_4::SetSkill(int tcd, int ttime)
 bool normal_4::countSkill(void)
 {
 	++skill_count;
+	if (skill_flag == 1 && GetHpPercent() < 100)
+	{
+		ModifyHp(1);
+	}
 	if (skill_flag == 1 && skill_count >= skill_time)
 	{
 		skill_count = 0;
@@ -1215,6 +1356,8 @@ bool normal_4::countSkill(void)
 
 void normal_4::UseSkill(player &, operate_system &, int num)
 {
+	if (num == 3)
+		skill_flag = (skill_flag ? 0 : 1);
 }
 
 int normal_4::GetSkillKind(int num) const
