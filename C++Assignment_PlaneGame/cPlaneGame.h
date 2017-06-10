@@ -23,6 +23,8 @@
 #define PLAYER 50
 #define BULLET 3
 #define LASERLENGTH 5
+class player;
+class operate_system;
 class player_bullet
 {
 private:
@@ -93,7 +95,7 @@ private:
 public:
 	enemy_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy);
 	virtual bool CheckDisapear(void);
-	void Move(void);
+	virtual void Move(player&);
 	std::pair<int, int> GetPos(void)const;
 	int GetAtk(void)const;
 	void SetSpeed(int tspeedx,int tspeedy);
@@ -103,6 +105,12 @@ public:
 	virtual void Draw(void)const;
 	int GetX(void)const;
 	int GetY(void)const;
+	void SetFrame(int tframe);
+	int GetFrame(void)const;
+	void ModifyNowFrame(int);
+	std::pair<int, int> GetSpeed(void)const;
+	void ModifyPos(std::pair<int, int>speed);
+	int GetNowFrame(void)const;
 };
 class laser : public enemy_bullet
 {
@@ -111,6 +119,15 @@ public:
 	bool CheckDisapear(void);
 	bool ifAttack(std::pair<int, int>pos)const;
 	void Draw(void)const;
+};
+class track_bullet : public enemy_bullet
+{
+private:
+	int change_num, now_num;
+public:
+	track_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy);
+	void ChangeDirection(std::pair<int,int>pos);
+	void Move(player&);
 };
 class enemy
 {
@@ -138,7 +155,7 @@ private:
 public:
 	enemy(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
 		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
-	void move(void);
+	virtual void move(void);
 	virtual bool ifBeAttacked(int bx, int by)const;
 	virtual int beAttacked(int);
 	virtual bool countFire(void);
@@ -158,7 +175,7 @@ public:
 	virtual void SetFireList(std::vector<std::array<int, 3>>tfire_list);
 	virtual void ChangeFireState(void);
 	virtual void ChangeMoveState(void);
-	virtual void UseSkill(void);
+	virtual void UseSkill(player&,operate_system&,int num);
 	void SetFrame(int tframe);
 	bool GetFlag(int)const;
 	void SetLength(int tL);
@@ -170,12 +187,13 @@ public:
 	std::pair<int, int>GetSpeed(void)const;
 	virtual bool countSkill(void);
 	void ModifyHp(int a);
-	virtual int GetSkillKind(void)const;
+	virtual int GetSkillKind(int num)const;
+	virtual int GetSkillQuantity(void)const;
 };
 class normal_1 : public enemy
 {
 private:
-	int skill_cd, skill_count, skill_time, skill_flag, skill_kind;
+	int skill_cd, skill_count, skill_time, skill_flag, skill_kind, skill_quantity;
 public:
 	normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
 		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
@@ -183,10 +201,49 @@ public:
 	enemy_bullet& Fire(void);
 	void SetSkill(int tcd, int ttime);
 	bool countSkill(void);//flag为技能使用状态，1为正在使用。返回1则需要切换状态。
-	void UseSkill(void);
+	void UseSkill(player&, operate_system&,int num);
 	int beAttacked(int a);
-	int GetSkillKind(void)const;
+	int GetSkillKind(int num)const;
 	void Draw(void)const;
+	int GetSkillQuantity(void)const;
+};
+class normal_2 : public enemy
+{
+private:
+	int skill_cd, skill_count, skill_time, skill_flag, skill_kind, skill_quantity;
+public:
+	normal_2(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
+		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
+	enemy_bullet& Fire(void);
+	void SetSkill(int tcd, int ttime);
+	bool countSkill(void);//flag为技能使用状态，1为正在使用。返回1则需要切换状态。
+	void UseSkill(player&, operate_system&, int num);
+	int beAttacked(int a);
+	int GetSkillKind(int num)const;
+	void Draw(void)const;
+	int GetSkillQuantity(void)const;
+};
+class normal_3 :public enemy
+{
+private:
+
+public:
+	normal_3(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
+		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
+	enemy_bullet& Fire(void);
+};
+class normal_4 : public enemy
+{
+private:
+	int skill_cd, skill_count, skill_time, skill_flag, skill_kind, skill_quantity;
+public:
+	normal_4(int thp, int tatk, int tdef, int tcoin, int tx, int ty,
+		int tatkr, int tdir_x, int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count);
+	void SetSkill(int tcd, int ttime);
+	bool countSkill(void);//flag为技能使用状态，1为正在使用。返回1则需要切换状态。
+	void UseSkill(player&, operate_system&, int num);
+	int GetSkillKind(int num)const;
+	int GetSkillQuantity(void)const;
 };
 class operate_system
 {
@@ -216,7 +273,7 @@ public:
 	void PlayerAttackEnemy(player& plane);
 	void MovePlayerBullet(void);
 	void DisappearPlayerBullet(void);
-	void MoveEnemyBullet(void);
+	void MoveEnemyBullet(player&);
 	void EnemyFire(void);
 	void EnemyAttackPlayer(player& plane);
 	void DisappearEnemyBullet(void);
@@ -226,7 +283,7 @@ public:
 		std::vector<std::array<int, 11>>tAppearEnemyAttribution);
 	bool AppearEnemy(void);
 	void tSet(void);
-	void EnemyUseSkill(void);
-
+	void EnemyUseSkill(player&);
+	 
 };
 #endif // !_cPlaneGame_H_

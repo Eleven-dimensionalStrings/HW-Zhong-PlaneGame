@@ -25,7 +25,7 @@ int main()
 		OperateSystem.CreateEnemy(*e);
 	}*/
 
-	initgraph(600, 800, 0);
+	initgraph(600, 800, SHOWCONSOLE);
 	HWND draw = GetHWnd();
 	MoveWindow(draw, 400, 0, 615, 839, NULL);
 	setbkcolor(0xF9FFFF);
@@ -48,8 +48,8 @@ int main()
 			break;
 		OperateSystem.MoveEnemy();
 		OperateSystem.EnemyFire();
-		OperateSystem.EnemyUseSkill();
-		OperateSystem.MoveEnemyBullet();
+		OperateSystem.EnemyUseSkill(PlayerPlane);
+		OperateSystem.MoveEnemyBullet(PlayerPlane);
 		PlayerPlane.beCrash(OperateSystem.CheckCrash(PlayerPlane.GetPos()));
 		OperateSystem.CheckDisapear();
 		if (PlayerPlane.ifFire())

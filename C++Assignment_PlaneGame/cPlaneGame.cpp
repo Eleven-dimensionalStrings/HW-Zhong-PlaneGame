@@ -1,15 +1,17 @@
 #include "cPlaneGame.h"
+#include<cassert>
 using namespace std;
 std::default_random_engine en(int(time(0)));
 std::uniform_real_distribution<double>Ranf(0, 0.2);
 std::uniform_int_distribution<int>RanPos(0, 24);
 std::uniform_int_distribution<int>RanDirx(-2, 2);
 std::uniform_int_distribution<int>RanDiry(0, 2);
-uniform_int_distribution<int>RanTime(60, 180);
+std::uniform_int_distribution<int>RanTime(60, 180);
+std::uniform_int_distribution<int>RanKind(1, 3);
 player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
 	int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd) :
 	hp(thp), energy(tenergy), rate(tr), count(tc), atk(tatk), def(tdef), coin(tcoin),
-	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd), skill1_level(0), level(0),steel_hp_persent(50)
+	x(tx), y(ty), skill1_n(tskill1_n), skill1_cd(tskill1_cd), skill1_level(0), level(0), steel_hp_persent(50)
 {
 }
 
@@ -267,7 +269,7 @@ bool enemy::countFire(void)
 enemy_bullet & enemy::Fire(void)
 {
 	enemy_bullet * teb = new enemy_bullet(atk, x + enemy_length / 2, y + 25 + bullet_radio, fire_speed_x, fire_speed_y);
-	teb->SetRadio(10);
+	teb->SetRadio(5);
 	return *teb;
 }
 
@@ -355,11 +357,15 @@ void enemy::SetFireList(std::vector<std::array<int, 3>> tfire_list)
 void enemy::ChangeFireState(void)
 {
 	++fire_count;
-	if (fire_count >= (*fire_step)[1])
+	if (fire_count >= (*fire_step)[2])
 	{
 		fire_count = 0;
 		++fire_step;
+#ifndef DEBUG
+		assert(fire_step >= fire_list.begin() && fire_step < fire_list.end());
+#endif // !DEBUG
 		fire_speed_x = (*fire_step)[0];
+		fire_speed_y = (*fire_step)[1];
 	}
 }
 
@@ -369,13 +375,14 @@ void enemy::ChangeMoveState(void)
 	if (move_count >= (*move_step)[2])
 	{
 		++move_step;
+		assert(move_step >= move_list.begin() && move_step < move_list.end());
 		move_count = 0;
 		move_speed_x = (*move_step)[0];
 		move_speed_y = (*move_step)[1];
 	}
 }
 
-void enemy::UseSkill(void)
+void enemy::UseSkill(player&, operate_system&, int num)
 {
 }
 
@@ -384,7 +391,12 @@ void enemy::ModifyHp(int a)
 	hp += a;
 }
 
-int enemy::GetSkillKind(void) const
+int enemy::GetSkillKind(int num) const
+{
+	return 0;
+}
+
+int enemy::GetSkillQuantity(void) const
 {
 	return 0;
 }
@@ -500,7 +512,7 @@ bool enemy_bullet::CheckDisapear(void)
 	return 0;
 }
 
-void enemy_bullet::Move(void)
+void enemy_bullet::Move(player&)
 {
 	++now_frame;
 	if (now_frame >= frame)
@@ -557,6 +569,40 @@ int enemy_bullet::GetX(void) const
 int enemy_bullet::GetY(void) const
 {
 	return y;
+}
+
+void enemy_bullet::SetFrame(int tframe)
+{
+	frame = tframe;
+}
+
+int enemy_bullet::GetFrame(void) const
+{
+	return frame;
+}
+
+void enemy_bullet::ModifyNowFrame(int n)
+{
+	if (n)
+		++now_frame;
+	else
+		now_frame = 0;
+}
+
+std::pair<int, int> enemy_bullet::GetSpeed(void) const
+{
+	return std::pair<int, int>(speed_x, speed_y);
+}
+
+void enemy_bullet::ModifyPos(std::pair<int, int> speed)
+{
+	x += speed_x;
+	y += speed_y;
+}
+
+int enemy_bullet::GetNowFrame(void) const
+{
+	return now_frame;
 }
 
 
@@ -685,12 +731,12 @@ void operate_system::DisappearPlayerBullet(void)
 	}
 }
 
-void operate_system::MoveEnemyBullet(void)
+void operate_system::MoveEnemyBullet(player& pl)
 {
 	list<enemy_bullet*>::iterator i;
 	for (i = EnemyBulletList.begin(); i != EnemyBulletList.end(); ++i)
 	{
-		(**i).Move();
+		(**i).Move(pl);
 	}
 }
 
@@ -773,25 +819,32 @@ bool operate_system::AppearEnemy(void)
 					   (*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 };
 				(*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(10);
-				(*e).SetLength(50);
-				this->CreateEnemy(*e);
-			}
-			else
-			{
-				enemy* e = new enemy{ 100 + int(100 * Ranf(en)),30 + int(30 * Ranf(en)),0,5 + int(5 * Ranf(en)),
-					25 * RanPos(en),0,60, RanDirx(en),RanDiry(en),RanDirx(en),RanDiry(en),0 };
-				(*e).SetMoveList(vector<array<int, 3>>{ {0, 1, 60000}});
-				(*e).SetFireList(vector<array<int, 3>>{ {0, 2, 60000}});
+				(*e).SetBulletRadio(5);
+				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
 		}
 		if ((*appear_enemy_step)[0] == 2)
 		{
-			enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+			enemy* e = new normal_2{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
 				(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
 				(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
-				(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 };
+				(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+			(*e).SetFireList(*appear_enemy_fire_inf);
+			(*e).SetBulletRadio(5);
+			(*e).SetLength(25);
+			this->CreateEnemy(*e);
+		}
+		if ((*appear_enemy_step)[0] == 3)
+		{
+			enemy* e = new normal_3{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+				(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+				(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+				(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+			(*e).SetFireList(*appear_enemy_fire_inf);
+			(*e).SetBulletRadio(5);
+			(*e).SetLength(25);
+			this->CreateEnemy(*e);
 		}
 		if ((appear_enemy_step + 2) != appear_enemy_list.end())
 		{
@@ -818,8 +871,8 @@ void operate_system::tSet(void)
 	for (int i = 0; i < 200; ++i)
 	{
 		array<int, 2>sa;
-		sa[0] = 1;
-		sa[1] = RanTime(en);
+		sa[0] = RanKind(en);
+		sa[1] = 3 * RanTime(en);
 		s.push_back(sa);
 		vector<array<int, 3>>ma;
 		for (int i = 0; i < 10; ++i)
@@ -833,38 +886,42 @@ void operate_system::tSet(void)
 		ma.push_back({ 0,1,60000 });
 		m.push_back(ma);
 		d.push_back(array<int, 11>{ 100 + int(100 * Ranf(en)), 10 + int(10 * Ranf(en)), 0, 5 + int(5 * Ranf(en)),
-			25 * RanPos(en), 0, 1, RanDirx(en), RanDiry(en), 0, 10});
+			25 * RanPos(en), 0, 60, RanDirx(en), RanDiry(en), 0, 3});
 		vector<array<int, 3>>fa;
 		for (int i = 0; i < 10; ++i)
 		{
 			array<int, 3>faa;
 			faa[0] = 0;
-			faa[1] = 10;
+			faa[1] = 3;
 			faa[2] = 60;
 			fa.push_back(faa);
 		}
-		fa.push_back({ 0,10,60000 });
+		fa.push_back({ 0,3,60000 });
 		f.push_back(fa);
 	}
 	this->SetAppearEnemyList(s, m, f, d);
 }
 
-void operate_system::EnemyUseSkill(void)
+void operate_system::EnemyUseSkill(player& plane)
 {
 	list<enemy*>::iterator i;
 	for (i = EnemyList.begin(); i != EnemyList.end(); ++i)
 	{
 		if ((**i).countSkill())
 		{
-			if ((**i).GetSkillKind() == 1)
-				(**i).UseSkill();
+			for (int j = 1; j <= 3; ++j)
+			{
+				if ((**i).GetSkillKind(j) == 1)
+					(**i).UseSkill(plane, *this, j);
+			}
 		}
 	}
 }
 
 normal_1::normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
 	int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
-		tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(1), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60)
+		tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(1), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60),
+	skill_quantity(1)
 {
 
 }
@@ -907,9 +964,10 @@ bool normal_1::countSkill(void)
 	return 0;
 }
 
-void normal_1::UseSkill(void)
+void normal_1::UseSkill(player&, operate_system&, int num)
 {
-	skill_flag = (skill_flag ? 0 : 1);
+	if (num == 1)
+		skill_flag = (skill_flag ? 0 : 1);
 }
 
 int normal_1::beAttacked(int a)
@@ -930,9 +988,12 @@ int normal_1::beAttacked(int a)
 	return 0;
 }
 
-int normal_1::GetSkillKind(void) const
+int normal_1::GetSkillKind(int num) const
 {
-	return skill_kind;
+	if (num == 1 && skill_count == 0)
+		return 1;
+	else
+		return 0;
 }
 
 void normal_1::Draw(void) const
@@ -947,6 +1008,11 @@ void normal_1::Draw(void) const
 	solidrectangle(GetPos().first, GetPos().second, GetPos().first + GetLength(), GetPos().second + GetLength());
 	setfillcolor(0x0000FF);
 	solidrectangle(GetPos().first, GetPos().second - 7, GetPos().first + l_hp, GetPos().second - 2);
+}
+
+int normal_1::GetSkillQuantity(void) const
+{
+	return skill_quantity;
 }
 
 
@@ -973,4 +1039,193 @@ bool laser::ifAttack(std::pair<int, int> pos) const
 void laser::Draw(void) const
 {
 	solidrectangle(GetX(), GetY(), GetX() + LASERLENGTH, GetY() + GetRadio());
+}
+
+normal_2::normal_2(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x,
+	int tdir_y, int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
+		tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(2), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60),
+	skill_quantity(1)
+{
+}
+
+enemy_bullet & normal_2::Fire(void)
+{
+	enemy_bullet * teb = new enemy_bullet(GetAtk(), GetPos().first + GetLength() / 2, GetPos().second + 25 + GetBulletRadio(),
+		GetFireSpeed().first, GetFireSpeed().second);
+	teb->SetRadio(GetBulletRadio());
+	return *teb;
+}
+
+void normal_2::SetSkill(int tcd, int ttime)
+{
+	skill_cd = tcd;
+	skill_time = ttime;
+}
+
+bool normal_2::countSkill(void)
+{
+	++skill_count;
+	if (skill_flag == 1 && skill_count >= skill_time)
+	{
+		skill_count = 0;
+		return 1;
+	}
+	if (skill_flag == 0 && skill_count >= skill_cd)
+	{
+		skill_count = 0;
+		return 1;
+	}
+	return 0;
+}
+
+void normal_2::UseSkill(player & pl, operate_system & op, int num)
+{
+	if (num == 2)
+	{
+		skill_flag = (skill_flag ? 0 : 1);
+		if (skill_flag == 1)
+		{
+			enemy* tene1 = new enemy{ 60,10,0,0,GetPos().first - GetLength(),GetPos().second + GetLength(),60,0,1,0,2,0 };
+			enemy* tene2 = new enemy{ 60,10,0,0,GetPos().first + GetLength() * 2,GetPos().second + GetLength(),60,0,1,0,2,0 };
+			tene1->SetBulletRadio(3);
+			tene2->SetBulletRadio(3);
+			op.CreateEnemy(*tene1);
+			op.CreateEnemy(*tene2);
+		}
+	}
+}
+
+int normal_2::beAttacked(int a)
+{
+	if (skill_flag == 0)
+	{
+		if (a > GetDef())
+		{
+			ModifyHp(GetDef() - a);
+			return a - GetDef();
+		}
+		else
+		{
+			return 1;
+			ModifyHp(-1);
+		}
+	}
+	return 0;
+}
+
+int normal_2::GetSkillKind(int num) const
+{
+	if (num == 2 && skill_count == 0)
+		return 1;
+	else
+		return 0;
+}
+
+void normal_2::Draw(void) const
+{
+	setfillcolor(0x00FF00);
+	int l_hp = GetLength()*GetHpPercent() / 100;
+	solidrectangle(GetPos().first, GetPos().second, GetPos().first + GetLength(), GetPos().second + GetLength());
+	setfillcolor(0x0000FF);
+	solidrectangle(GetPos().first, GetPos().second - 7, GetPos().first + l_hp, GetPos().second - 2);
+}
+
+int normal_2::GetSkillQuantity(void) const
+{
+	return skill_quantity;
+}
+
+track_bullet::track_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy) :enemy_bullet(ta, tx, ty, tspeedx, tspeedy),
+change_num(1200), now_num(0)
+{
+}
+
+void track_bullet::ChangeDirection(pair<int, int>pos)
+{
+	++now_num;
+	if (now_num <= change_num)
+	{
+		int xm = GetPos().first - pos.first, ym = GetPos().second - pos.second;
+		if (xm > 50 && ym > 50)
+			SetSpeed(-2, -2);
+		if (xm < -50 && ym < -50)
+			SetSpeed(2, 2);
+		if (xm > 50 && ym < -50)
+			SetSpeed(-2, 2);
+		if (xm < -50 && ym > 50)
+			SetSpeed(2, -2);
+		if (ym < 0 && xm>0 && xm < 50)
+			SetSpeed(0, 3);
+	}
+}
+
+void track_bullet::Move(player& pl)
+{
+	ChangeDirection(pl.GetPos());
+	ModifyNowFrame(1);
+	if (GetNowFrame() >= GetFrame())
+	{
+		ModifyPos(GetSpeed());
+		ModifyNowFrame(0);
+	}
+}
+
+normal_3::normal_3(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
+	int tfire_speed_x, int tfire_speed_y, int tfire_count) :enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
+		tfire_speed_x, tfire_speed_y, tfire_count)
+{
+}
+
+enemy_bullet & normal_3::Fire(void)
+{
+	enemy_bullet * teb = new track_bullet(GetAtk(), GetPos().first + GetLength() / 2, GetPos().second + 25 + GetBulletRadio(),
+		0, 3);
+	teb->SetRadio(GetBulletRadio());
+	return *teb;
+}
+
+normal_4::normal_4(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
+	int tfire_speed_x, int tfire_speed_y, int tfire_count) : enemy(thp, tatk, tdef, tcoin, tx, ty, tatkr, tdir_x, tdir_y,
+			tfire_speed_x, tfire_speed_y, tfire_count), skill_kind(3), skill_cd(120), skill_count(0), skill_flag(0), skill_time(60),
+	skill_quantity(1)
+{
+}
+
+void normal_4::SetSkill(int tcd, int ttime)
+{
+	skill_cd = tcd;
+	skill_time = ttime;
+}
+
+bool normal_4::countSkill(void)
+{
+	++skill_count;
+	if (skill_flag == 1 && skill_count >= skill_time)
+	{
+		skill_count = 0;
+		return 1;
+	}
+	if (skill_flag == 0 && skill_count >= skill_cd)
+	{
+		skill_count = 0;
+		return 1;
+	}
+	return 0;
+}
+
+void normal_4::UseSkill(player &, operate_system &, int num)
+{
+}
+
+int normal_4::GetSkillKind(int num) const
+{
+	if (num == 3 && skill_count == 0)
+		return 1;
+	else
+		return 0;
+}
+
+int normal_4::GetSkillQuantity(void) const
+{
+	return skill_quantity;
 }
