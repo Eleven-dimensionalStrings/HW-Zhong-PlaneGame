@@ -7,11 +7,12 @@ std::uniform_int_distribution<int>RanPos(0, 24);
 std::uniform_int_distribution<int>RanDirx(-2, 2);
 std::uniform_int_distribution<int>RanDiry(0, 2);
 std::uniform_int_distribution<int>RanTime(60, 180);
-std::uniform_int_distribution<int>RanKind(1, 4);
-player::player(int thp, int tenergy, int tr, int tc, int tatk, int tdef,
-	int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd) :
-	hp(thp), energy(tenergy), rate(tr), count(tc), atk(tatk), def(tdef), coin(tcoin),
-	x(tx), y(ty), level(1), steel_hp_persent(50), eq1(0), eq2(0), eq3(0)
+std::uniform_int_distribution<int>RanKind(0, 100);
+const int EqPr[4][3]{ 60,120,500,50,100,450,30,60,200,45,150,600 };
+player::player(int thp, int tenergy, int tr, int tatk, int tdef,
+	int tcoin, int tx, int ty) :infinite_level(1),
+	hp(thp), energy(tenergy), rate(tr), count(0), atk(tatk), def(tdef), coin(tcoin), skill_flag(0),
+	x(tx), y(ty), level(1), steel_hp_persent(5), steel_sp_persent(3), eq{ 0,0,0,0,0,0 }
 {
 }
 
@@ -30,20 +31,26 @@ player::player(string data)
 
 void player::beAttacked(int a)
 {
-	hp -= (a > def ? a - def : 1);
+	if (!skill_flag)
+		hp -= (a > GetDef() ? a - GetDef() : 1);
 }
 
 void player::beCrash(int a_hp)
 {
-	hp -= a_hp / atk;
+	hp -= a_hp / GetAtk();
 }
 
-pair<int, int> player::PlayerOperate(void)const
+pair<int, int> player::PlayerOperate(void)
 {
-
+	skill_flag = 0;
 	int  ud = 0, lr = 0;
 	ud = bool(GetAsyncKeyState(VK_S)) - bool(GetAsyncKeyState(VK_W));
 	lr = bool(GetAsyncKeyState(VK_D)) - bool(GetAsyncKeyState(VK_A));
+	if (GetAsyncKeyState(VK_K) && energy > 0)
+	{
+		--energy;
+		skill_flag = 1;
+	}
 	if (GetAsyncKeyState(0x50))
 		_getch();
 	if (ud && lr)
@@ -68,14 +75,24 @@ std::pair<int, int> player::GetPos(void) const
 
 int player::GetDef(void) const
 {
-	return def;
+	int d = def;
+	for (int i = 0; i < 6; ++i)
+	{
+		if (eq[i] == 21)
+			d += 5;
+		if (eq[i] == 22)
+			d += 10;
+		if (eq[i] == 23)
+			d += 30;
+	}
+	return d;
 }
 
 bool player::ifFire(void)
 {
 	if (GetAsyncKeyState(VK_J))
 		++count;
-	if (count + GetFireMinus() >= rate)
+	if (count >= GetFireRate() && energy > 0)
 		return true;
 	return false;
 }
@@ -83,8 +100,10 @@ bool player::ifFire(void)
 std::vector<string> player::GetData(void) const
 {
 	vector<string>data;
-	int digit = 1000000000, ihp = 0, ienergy = 0, uhp = hp, uenergy = energy, ucoin = coin, icoin = 0;
-	string shp = "", senergy = "", scoin = "";
+	int digit = 1000000000, ihp = 0, ienergy = 0, uhp = hp, uenergy = energy, ucoin = coin, icoin = 0,
+		uatk = GetAtk(), iatk = 0, udef = GetDef(), idef = 0, usteelhp = GetSteelHpPersent(),
+		isteelhp = 0, usteelsp = GetSteelSpPersent(), isteelsp = 0, ulv = level, ilv = 0, uinflv = infinite_level, iinflv = 0;
+	string shp = "", senergy = "", scoin = "", satk = "", sdef = "", ssteelhp = "", ssteelsp = "", slv = "", sinflv = "";
 	for (int i = 0; i < 10; ++i)
 	{
 		if (uhp / digit)
@@ -93,6 +112,18 @@ std::vector<string> player::GetData(void) const
 			++ienergy;
 		if (ucoin / digit)
 			++icoin;
+		if (uatk / digit)
+			++iatk;
+		if (udef / digit)
+			++idef;
+		if (usteelhp / digit)
+			++isteelhp;
+		if (usteelsp / digit)
+			++isteelsp;
+		if (ulv / digit)
+			++ilv;
+		if (uinflv / digit)
+			++iinflv;
 		if (ihp)
 		{
 			shp += char((uhp / digit) + 48);
@@ -108,6 +139,36 @@ std::vector<string> player::GetData(void) const
 			scoin += char((ucoin / digit) + 48);
 			ucoin -= (ucoin / digit)*digit;
 		}
+		if (iatk)
+		{
+			satk += char((uatk / digit) + 48);
+			uatk -= (uatk / digit)*digit;
+		}
+		if (idef)
+		{
+			sdef += char((udef / digit) + 48);
+			udef -= (udef / digit)*digit;
+		}
+		if (isteelhp)
+		{
+			ssteelhp += char((usteelhp / digit) + 48);
+			usteelhp -= (usteelhp / digit)*digit;
+		}
+		if (isteelsp)
+		{
+			ssteelsp += char((usteelsp / digit) + 48);
+			usteelsp -= (usteelsp / digit)*digit;
+		}
+		if (ilv)
+		{
+			slv += char((ulv / digit) + 48);
+			ulv -= (ulv / digit)*digit;
+		}
+		if (iinflv)
+		{
+			sinflv += char((uinflv / digit) + 48);
+			uinflv -= (uinflv / digit)*digit;
+		}
 		digit /= 10;
 	}
 	shp += '\0';
@@ -115,6 +176,12 @@ std::vector<string> player::GetData(void) const
 	data.push_back(shp);
 	data.push_back(senergy);
 	data.push_back(scoin);
+	data.push_back(satk);
+	data.push_back(sdef);
+	data.push_back(ssteelhp);
+	data.push_back(ssteelsp);
+	data.push_back(slv);
+	data.push_back(sinflv);
 	return data;
 }
 
@@ -138,10 +205,9 @@ bool player::ifBeKilled(void) const
 void player::BuyEquipment(void)
 {
 	MOUSEMSG click;
-	int chose = 1, bag = 1;
-	string seq1 = "", seq2 = "", seq3 = "";
+	int choose = 1, bag = 0, ex = 0;
 	IMAGE screen{ 600,800 };
-	IMAGE eq01, eq02, eq03, eq11, eq12, eq13, eq21, eq22, eq23, eq31, eq32, eq33;
+	IMAGE eq01, eq02, eq03, eq11, eq12, eq13, eq21, eq22, eq23, eq31, eq32, eq33, buy, sell, exit;
 	loadimage(&eq02, "2.bmp", 85, 64, 0);
 	loadimage(&eq01, "1.bmp", 85, 64, 0);
 	loadimage(&eq03, "3.bmp", 85, 64, 0);
@@ -154,10 +220,13 @@ void player::BuyEquipment(void)
 	loadimage(&eq31, "31.bmp", 85, 64, 0);
 	loadimage(&eq32, "32.bmp", 85, 64, 0);
 	loadimage(&eq33, "33.bmp", 85, 64, 0);
-	while (!GetAsyncKeyState(VK_ESCAPE))
+	loadimage(&buy, "buy.bmp", 85, 64, 0);
+	loadimage(&sell, "sell.bmp", 85, 64, 0);
+	loadimage(&exit, "exit.bmp", 85, 64, 0);
+	while (!ex)
 	{
 		SetWorkingImage(&screen);
-		setbkcolor(WHITE);
+		setbkcolor(0xF6FFFF);
 		cleardevice();
 		click = GetMouseMsg();
 		if (click.mkLButton)
@@ -168,14 +237,37 @@ void player::BuyEquipment(void)
 				{
 					if (click.x >= x && click.x < x + 85 && click.y >= y && click.y < y + 64)
 					{
-						chose = (x - 50) / 100 + ((10 * (y - 50)) / 120) + 1;
+						choose = (x - 50) / 100 + ((10 * (y - 50)) / 120) + 1;
 					}
 				}
 			}
-			for (int i = 1; i <= 3; ++i)
+			for (int i = 1; i <= 6; ++i)
 			{
-				if (click.x >= i * 160 - 80 && click.x < i * 160 + 4 && click.y >= 500 && click.y < 564)
-					bag = i;
+				if (click.x >= i * 100 - 90 && click.x < i * 100 - 5 && click.y >= 550 && click.y < 614)
+					bag = i - 1;
+			}
+			if (click.x >= 420 && click.x < 505 && click.y >= 680 && click.y < 744)
+				ex = 1;
+			if (click.x >= 60 && click.x < 145 && click.y >= 680 && click.y < 744)
+			{
+				if (eq[bag] == 0 && choose % 10 == 1)
+				{
+					if (coin >= EqPr[choose / 10][(choose % 10) - 1])
+					{
+						coin -= EqPr[choose / 10][(choose % 10) - 1];
+						eq[bag] = choose;
+					}
+				}
+				if (eq[bag] + 1 == choose && coin >= EqPr[choose / 10][(choose % 10) - 1])
+				{
+					coin -= EqPr[choose / 10][(choose % 10) - 1];
+					eq[bag] = choose;
+				}
+			}
+			if (click.x >= 240 && click.x < 325 && click.y >= 680 && click.y < 744 && eq[bag] != 0)
+			{
+				coin += EqPr[eq[bag] / 10][(eq[bag] % 10) - 1];
+				eq[bag] = 0;
 			}
 		}
 		putimage(50, 50, &eq01);
@@ -190,13 +282,171 @@ void player::BuyEquipment(void)
 		putimage(50, 410, &eq31);
 		putimage(150, 410, &eq32);
 		putimage(250, 410, &eq33);
+		putimage(60, 680, &buy);
+		putimage(240, 680, &sell);
+		putimage(420, 680, &exit);
 		setlinecolor(BLACK);
-		rectangle(((chose % 10) - 1) * 100 + 45, (chose / 10) * 120 + 45, ((chose % 10) - 1) * 100 + 140, (chose / 10) * 120 + 119);
-		rectangle(bag * 160 - 85, 495, bag * 160 + 10, 569);
+		rectangle(((choose % 10) - 1) * 100 + 45, (choose / 10) * 120 + 45, ((choose % 10) - 1) * 100 + 140, (choose / 10) * 120 + 119);
+		rectangle(bag * 100 + 5, 545, bag * 100 + 100, 619);
 		setlinecolor(BLUE);
-		rectangle(80, 500, 165, 564);
-		rectangle(240, 500, 325, 564);
-		rectangle(400, 500, 485, 564);
+		rectangle(10, 550, 95, 614);
+		rectangle(110, 550, 195, 614);
+		rectangle(210, 550, 295, 614);
+		rectangle(310, 550, 395, 614);
+		rectangle(410, 550, 495, 614);
+		rectangle(510, 550, 595, 614);
+		for (int i = 0; i < 6; ++i)
+		{
+			if (eq[i] == 1)
+			{
+				putimage(100 * i + 10, 550, &eq01);
+			}
+			if (eq[i] == 2)
+			{
+				putimage(100 * i + 10, 550, &eq02);
+			}
+			if (eq[i] == 3)
+			{
+				putimage(100 * i + 10, 550, &eq03);
+			}
+			if (eq[i] == 11)
+			{
+				putimage(100 * i + 10, 550, &eq11);
+			}
+			if (eq[i] == 12)
+			{
+				putimage(100 * i + 10, 550, &eq12);
+			}
+			if (eq[i] == 13)
+			{
+				putimage(100 * i + 10, 550, &eq13);
+			}
+			if (eq[i] == 21)
+			{
+				putimage(100 * i + 10, 550, &eq21);
+			}
+			if (eq[i] == 22)
+			{
+				putimage(100 * i + 10, 550, &eq22);
+			}
+			if (eq[i] == 23)
+			{
+				putimage(100 * i + 10, 550, &eq23);
+			}
+			if (eq[i] == 31)
+			{
+				putimage(100 * i + 10, 550, &eq31);
+			}
+			if (eq[i] == 32)
+			{
+				putimage(100 * i + 10, 550, &eq32);
+			}
+			if (eq[i] == 33)
+			{
+				putimage(100 * i + 10, 550, &eq33);
+			}
+		}
+		vector<string>data(GetData());
+		settextcolor(BLACK);
+		string scoin = data[2];
+		data[5] += "%";
+		data[6] += "%";
+		outtextxy(400, 325, "HP:");
+		outtextxy(400, 350, "MP:");
+		outtextxy(400, 375, "COIN:");
+		outtextxy(400, 400, "ATK:");
+		outtextxy(400, 425, "DEF:");
+		outtextxy(400, 450, "S_HP:");
+		outtextxy(400, 475, "S_SP:");
+		outtextxy(450, 325, &data[0][0]);
+		outtextxy(450, 350, &data[1][0]);
+		outtextxy(450, 375, &data[2][0]);
+		outtextxy(450, 400, &data[3][0]);
+		outtextxy(450, 425, &data[4][0]);
+		outtextxy(450, 450, &data[5][0]);
+		outtextxy(450, 475, &data[6][0]);
+		switch (choose)
+		{
+		case 1:
+			outtextxy(350, 50, "                 秘银锤");
+			outtextxy(350, 100, "攻击力 + 15");
+			outtextxy(350, 150, "攻速 + 0.08");
+			outtextxy(350, 200, "售价: 60");
+			outtextxy(350, 250, "无购买条件");
+			break;
+		case 2:
+			outtextxy(350, 50, "                 漩涡之锤");
+			outtextxy(350, 100, "攻击力 + 25");
+			outtextxy(350, 150, "攻速 + 0.13");
+			outtextxy(350, 200, "售价: 120");
+			outtextxy(350, 250, "选定装备栏为秘银锤方可购买");
+			break;
+		case 3:
+			outtextxy(350, 50, "                 雷神之锤");
+			outtextxy(350, 100, "攻击力 + 80");
+			outtextxy(350, 150, "攻速 + 0.25");
+			outtextxy(350, 200, "售价: 500");
+			outtextxy(350, 250, "选定装备栏为漩涡之锤方可购买");
+			break;
+		case 11:
+			outtextxy(350, 50, "                 吸血面具");
+			outtextxy(350, 100, "生命吸取 + 0.10");
+			outtextxy(350, 150, "售价: 50");
+			outtextxy(350, 200, "无购买条件");
+			break;
+		case 12:
+			outtextxy(350, 50, "                 疯狂面具");
+			outtextxy(350, 100, "生命吸取 + 0.15");
+			outtextxy(350, 150, "售价: 100");
+			outtextxy(350, 200, "选定装备栏为吸血面具方可购买");
+			break;
+		case 13:
+			outtextxy(350, 50, "                 撒旦之邪力");
+			outtextxy(350, 100, "生命吸取 + 0.3");
+			outtextxy(350, 150, "售价: 450");
+			outtextxy(350, 200, "选定装备栏为疯狂面具方可购买");
+			break;
+		case 21:
+			outtextxy(350, 50, "                 锁子甲");
+			outtextxy(350, 100, "护甲 + 5");
+			outtextxy(350, 150, "售价: 30");
+			outtextxy(350, 200, "无购买条件");
+			break;
+		case 22:
+			outtextxy(350, 50, "                 刃甲");
+			outtextxy(350, 100, "护甲 + 10");
+			outtextxy(350, 150, "售价: 60");
+			outtextxy(350, 200, "选定装备栏为锁子甲方可购买");
+			break;
+		case 23:
+			outtextxy(350, 50, "                 强袭胸甲");
+			outtextxy(350, 100, "护甲 + 30");
+			outtextxy(350, 150, "售价: 200");
+			outtextxy(350, 200, "选定装备栏为刃甲方可购买");
+			break;
+		case 31:
+			outtextxy(350, 50, "                 欢欣之刃");
+			outtextxy(350, 100, "法力吸取 + 0.08");
+			outtextxy(350, 150, "售价: 45");
+			outtextxy(350, 200, "无购买条件");
+			break;
+		case 32:
+			outtextxy(350, 50, "                 净魂之刃");
+			outtextxy(350, 100, "法力吸取 + 0.12");
+			outtextxy(350, 150, "售价: 150");
+			outtextxy(350, 200, "选定装备栏为欢欣之刃方可购买");
+			break;
+		case 33:
+			outtextxy(350, 50, "                 高级净魂之刃");
+			outtextxy(350, 100, "法力吸取 + 0.16");
+			outtextxy(350, 150, "售价: 600");
+			outtextxy(350, 200, "选定装备栏为净魂之刃方可购买");
+			break;
+		default:
+			break;
+		}
+		outtextxy(350, 280, "物品出售时获得原价金币");
+		outtextxy(350, 300, "但是无法获得前置物品的金币");
 		SetWorkingImage(0);
 		putimage(0, 0, &screen);
 	}
@@ -204,34 +454,96 @@ void player::BuyEquipment(void)
 
 int player::GetSteelHpPersent(void) const
 {
-	return steel_hp_persent;
+	int st = steel_hp_persent;
+	for (int i = 0; i < 6; ++i)
+	{
+		if (eq[i] == 11)
+			st += 10;
+		if (eq[i] == 12)
+			st += 15;
+		if (eq[i] == 13)
+			st += 30;
+	}
+	return st;
 }
 
-void player::SteelHp(int dhp)
+int player::GetSteelSpPersent(void) const
+{
+	int st = steel_sp_persent;
+	for (int i = 0; i < 6; ++i)
+	{
+		if (eq[i] == 31)
+			st += 8;
+		if (eq[i] == 32)
+			st += 12;
+		if (eq[i] == 33)
+			st += 16;
+	}
+	return st;
+}
+
+void player::SteelHpAndSp(int dhp)
 {
 	hp += dhp*GetSteelHpPersent() / 100;
+	energy += dhp*GetSteelSpPersent() / 100;
 }
 
-int player::GetFireMinus(void) const
+int player::GetFireRate(void) const
 {
-	return 0;
+	int r = rate;
+	double a = 1;
+	for (int i = 0; i < 6; ++i)
+	{
+		if (eq[i] == 1)
+			a += 0.08;
+		if (eq[i] == 2)
+			a += 0.13;
+		if (eq[i] == 3)
+			a += 0.25;
+	}
+	r = int(double(r) / a);
+	return r;
 }
 
-int player::GetExAtk(void) const
+int player::GetAtk(void) const
 {
-	return 0;
+	int a = atk;
+	for (int i = 0; i < 6; ++i)
+	{
+		if (eq[i] == 1)
+			a += 15;
+		if (eq[i] == 2)
+			a += 25;
+		if (eq[i] == 3)
+			a += 80;
+	}
+	return a;
 }
 
-int player::GetExDef(void) const
+int player::GetLevel(int kind) const
 {
-	return 0;
+	return (kind == 1 ? level : infinite_level);
+}
+
+void player::PassLevel(int kind)
+{
+	if (kind == 1)
+	{
+		coin += level * 100;
+		++level;
+	}
+	else
+	{
+		++infinite_level;
+		coin += infinite_level * 20;
+	}
 }
 
 player_bullet & player::Fire(void)
 {
 	--energy;
 	count = 0;
-	player_bullet * t = new player_bullet(atk, x + PLAYER / 2, y - 7);
+	player_bullet * t = new player_bullet(GetAtk(), x + PLAYER / 2, y - 7);
 	return *t;
 }
 
@@ -324,8 +636,12 @@ bool enemy::ifBeAttacked(int bx, int by)const
 
 int enemy::beAttacked(int patk)
 {
+	int st = 0;
+	st = (patk > def ? patk - def : 1);
+	if (st > hp)
+		st = hp;
 	hp -= (patk > def ? patk - def : 1);
-	return (patk > def ? patk - def : 1);
+	return st;
 }
 
 bool enemy::countFire(void)
@@ -342,7 +658,7 @@ bool enemy::countFire(void)
 enemy_bullet & enemy::Fire(void)
 {
 	enemy_bullet * teb = new enemy_bullet(atk, x + enemy_length / 2, y + 25 + bullet_radio, fire_speed_x, fire_speed_y);
-	teb->SetRadio(5);
+	teb->SetRadio(GetBulletRadio());
 	return *teb;
 }
 
@@ -702,11 +1018,23 @@ void operate_system::DrawToScreen(pair<int, int>plp, vector<string>player_data)
 	}
 	settextcolor(BLACK);
 	outtextxy(0, 620, "HP:");
-	outtextxy(0, 650, "MP:");
-	outtextxy(0, 680, "COIN:");
+	outtextxy(0, 645, "MP:");
+	outtextxy(0, 670, "COIN:");
+	outtextxy(0, 695, "ATK:");
+	outtextxy(0, 720, "DEF:");
+	outtextxy(0, 745, "S_HP:");
+	outtextxy(0, 770, "S_SP:");
+	outtextxy(300, 650, "LEVEL:");
+	outtextxy(300, 700, "INFINITE LEVEL:");
 	outtextxy(50, 620, &player_data[0][0]);
-	outtextxy(50, 650, &player_data[1][0]);
-	outtextxy(50, 680, &player_data[2][0]);
+	outtextxy(50, 645, &player_data[1][0]);
+	outtextxy(50, 670, &player_data[2][0]);
+	outtextxy(50, 695, &player_data[3][0]);
+	outtextxy(50, 720, &player_data[4][0]);
+	outtextxy(50, 745, &player_data[5][0]);
+	outtextxy(50, 770, &player_data[6][0]);
+	outtextxy(450, 650, &player_data[7][0]);
+	outtextxy(450, 700, &player_data[8][0]);
 }
 
 int operate_system::CheckCrash(std::pair<int, int>pos)
@@ -770,7 +1098,7 @@ void operate_system::PlayerAttackEnemy(player& plane)
 		{
 			if ((**i).ifBeAttacked((**j).GetPos().first, (**j).GetPos().second))
 			{
-				plane.SteelHp((**i).beAttacked((**j).GetAtk()));
+				plane.SteelHpAndSp((**i).beAttacked((**j).GetAtk()));
 				delete *j;
 				PlayerBulletList.erase(j++);
 			}
@@ -876,13 +1204,21 @@ void operate_system::SetAppearEnemyList(std::vector<std::array<int, 2>> tEnemyAp
 	appear_enemy_count = 0;
 }
 
-bool operate_system::AppearEnemy(void)
+bool operate_system::AppearEnemy(int level, int kind)
 {
+	if (appear_enemy_step == appear_enemy_list.end())
+		return 0;
 	++appear_enemy_count;
+	kind = (kind == 1 ? 2 : 1);
+	int n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+	n1 += (kind*level <= 20 ? kind*level : 20);
+	n2 += 2 * n1;
+	n3 += 3 * n1;
+	n4 = n1 * 2 + n3;
 	if (appear_enemy_count >= (*appear_enemy_step)[1])
 	{
 		appear_enemy_count = 0;
-		if ((*appear_enemy_step)[0] == 1)
+		if ((*appear_enemy_step)[0] <= n1)
 		{
 			if ((*appear_enemy_attribution_inf)[0] != -1)
 			{
@@ -892,7 +1228,7 @@ bool operate_system::AppearEnemy(void)
 					   (*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 };
 				(*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
@@ -903,12 +1239,12 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
 		}
-		if ((*appear_enemy_step)[0] == 2)
+		else if ((*appear_enemy_step)[0] <= n2)
 		{
 			if ((*appear_enemy_attribution_inf)[0] != -1)
 			{
@@ -917,7 +1253,7 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
@@ -928,12 +1264,12 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
 		}
-		if ((*appear_enemy_step)[0] == 3)
+		else if ((*appear_enemy_step)[0] <= n3)
 		{
 			if ((*appear_enemy_attribution_inf)[0] != -1)
 			{
@@ -942,7 +1278,7 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
@@ -953,12 +1289,12 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
 		}
-		if ((*appear_enemy_step)[0] == 4)
+		else if ((*appear_enemy_step)[0] <= n4)
 		{
 			if ((*appear_enemy_attribution_inf)[0] != -1)
 			{
@@ -967,7 +1303,7 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
@@ -978,12 +1314,37 @@ bool operate_system::AppearEnemy(void)
 					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
 					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
 				(*e).SetFireList(*appear_enemy_fire_inf);
-				(*e).SetBulletRadio(5);
+				(*e).SetBulletRadio(3);
 				(*e).SetLength(25);
 				this->CreateEnemy(*e);
 			}
 		}
-		if ((appear_enemy_step + 2) != appear_enemy_list.end())
+		else
+		{
+			if ((*appear_enemy_attribution_inf)[0] != -1)
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(3);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
+			else
+			{
+				enemy* e = new enemy{ (*appear_enemy_attribution_inf)[0],(*appear_enemy_attribution_inf)[1],
+					(*appear_enemy_attribution_inf)[2], (*appear_enemy_attribution_inf)[3], (*appear_enemy_attribution_inf)[4],
+					(*appear_enemy_attribution_inf)[5], (*appear_enemy_attribution_inf)[6], (*appear_enemy_attribution_inf)[7],
+					(*appear_enemy_attribution_inf)[8], (*appear_enemy_attribution_inf)[9],(*appear_enemy_attribution_inf)[10],0 }; (*e).SetMoveList(*appear_enemy_move_inf);
+				(*e).SetFireList(*appear_enemy_fire_inf);
+				(*e).SetBulletRadio(3);
+				(*e).SetLength(25);
+				this->CreateEnemy(*e);
+			}
+		}
+		if ((appear_enemy_step) != appear_enemy_list.end())
 		{
 			++appear_enemy_step;
 			++appear_enemy_fire_inf;
@@ -992,24 +1353,26 @@ bool operate_system::AppearEnemy(void)
 		}
 		else
 		{
-			outtextxy(0, 600, "END");
 			return 0;
 		}
 	}
 	return 1;
 }
 
-void operate_system::tSet(void)
+void operate_system::tSet(int level, int kind)
 {
 	vector<array<int, 2>>s;
 	vector<vector<array<int, 3>>>f;
 	vector<array<int, 11>>d;
 	vector<vector<array<int, 3>>>m;
-	for (int i = 0; i < 200; ++i)
+	int num = 50;
+	if (kind == 1)
+		num = level * 30;
+	for (int i = 0; i < num; ++i)
 	{
 		array<int, 2>sa;
 		sa[0] = RanKind(en);
-		sa[1] = 2 * RanTime(en);
+		sa[1] = RanTime(en);
 		s.push_back(sa);
 		vector<array<int, 3>>ma;
 		for (int i = 0; i < 10; ++i)
@@ -1022,15 +1385,16 @@ void operate_system::tSet(void)
 		}
 		ma.push_back({ 0,1,60000 });
 		m.push_back(ma);
-		d.push_back(array<int, 11>{ 100 + int(100 * Ranf(en)), 10 + int(10 * Ranf(en)), 0, 5 + int(5 * Ranf(en)),
+		d.push_back(array<int, 11>{ 100 * level + int(100 * Ranf(en) * level), 15 * level + int(15 * Ranf(en) * level),
+			0, 5 * level + int(5 * Ranf(en) * level),
 			25 * RanPos(en), 0, 60, RanDirx(en), RanDiry(en), 0, 3});
 		vector<array<int, 3>>fa;
 		for (int i = 0; i < 10; ++i)
 		{
 			array<int, 3>faa;
-			faa[0] = 0;
+			faa[0] = RanDirx(en);
 			faa[1] = 3;
-			faa[2] = 60;
+			faa[2] = 180;
 			fa.push_back(faa);
 		}
 		fa.push_back({ 0,3,60000 });
@@ -1053,6 +1417,20 @@ void operate_system::EnemyUseSkill(player& plane)
 			}
 		}
 	}
+}
+
+void operate_system::clear(void)
+{
+	EnemyList.clear();
+	EnemyBulletList.clear();
+	PlayerBulletList.clear();
+}
+
+bool operate_system::empty(void) const
+{
+	if (EnemyList.empty() && EnemyBulletList.empty() && PlayerBulletList.empty())
+		return 1;
+	return false;
 }
 
 normal_1::normal_1(int thp, int tatk, int tdef, int tcoin, int tx, int ty, int tatkr, int tdir_x, int tdir_y,
@@ -1273,7 +1651,7 @@ int normal_2::GetSkillQuantity(void) const
 }
 
 track_bullet::track_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy) :enemy_bullet(ta, tx, ty, tspeedx, tspeedy),
-change_num(1200), now_num(0)
+change_num(300), now_num(0)
 {
 }
 

@@ -57,14 +57,17 @@ private:
 	int coin;//玩家金币，可购买属性和装备
 	int x, y;//坐标以窗口左上角为（0，0），x为横坐标，y为纵坐标
 	int level;
+	int infinite_level;//无尽模式的关卡数
 	int steel_hp_persent;
-	int eq1, eq2, eq3;
+	int steel_sp_persent;
+	int eq[6];
+	int skill_flag;
 public:
-	player(int thp, int tenergy, int tr, int tc, int tatk, int tdef, int tcoin, int tx, int ty, int tskill1_n, int tskill1_cd);
+	player(int thp, int tenergy, int tr, int tatk, int tdef, int tcoin, int tx, int ty);
 	player(std::string data);
 	void beAttacked(int a);
 	void beCrash(int a_hp);
-	std::pair<int, int> PlayerOperate(void)const;
+	std::pair<int, int> PlayerOperate(void);
 	void MovePlayer(std::pair<int, int>);
 	std::pair<int, int> GetPos(void)const;
 	int GetDef(void)const;
@@ -76,10 +79,12 @@ public:
 	bool ifBeKilled(void)const;
 	void BuyEquipment(void);
 	int GetSteelHpPersent(void)const;
-	void SteelHp(int dhp);
-	int GetFireMinus(void)const;
-	int GetExAtk(void)const;
-	int GetExDef(void)const;
+	int GetSteelSpPersent(void)const;
+	void SteelHpAndSp(int dhp);
+	int GetFireRate(void)const;
+	int GetAtk(void)const;
+	int GetLevel(int kind)const;//传入1为关卡数，2为无尽模式关卡数
+	void PassLevel(int kind);//同上
 };
 class enemy_bullet
 {
@@ -128,6 +133,7 @@ public:
 	track_bullet(int ta, int tx, int ty, int tspeedx, int tspeedy);
 	void ChangeDirection(std::pair<int,int>pos);
 	void Move(player&);
+	void SetChangeNumber(int tchange_num);
 };
 class enemy
 {
@@ -281,9 +287,10 @@ public:
 		std::vector<std::vector<std::array<int, 3>>>tAppearEnemyMoveList,
 		std::vector<std::vector<std::array<int, 3>>>tAppearEnemyFireList,
 		std::vector<std::array<int, 11>>tAppearEnemyAttribution);
-	bool AppearEnemy(void);
-	void tSet(void);
+	bool AppearEnemy(int level,int kind);
+	void tSet(int level,int kind);
 	void EnemyUseSkill(player&);
-	 
+	void clear(void);
+	bool empty(void)const;
 };
 #endif // !_cPlaneGame_H_
